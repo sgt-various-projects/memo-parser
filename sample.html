@@ -21,18 +21,44 @@
 </table>
 
 
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>上下キーでテキストエリアを移動</title>
+  <title>テキストボックス付きテキストエリア</title>
+  <style>
+    .row {
+      display: flex;
+      align-items: start;
+      margin-bottom: 8px;
+    }
+
+    .row input[type="text"] {
+      width: 100px;
+      margin-right: 8px;
+    }
+
+    .row textarea {
+      flex: 1;
+    }
+  </style>
 </head>
 <body>
 
-  <textarea rows="3" cols="40"></textarea><br>
-  <textarea rows="3" cols="40"></textarea><br>
-  <textarea rows="3" cols="40"></textarea><br>
+  <div class="row">
+    <input type="text" placeholder="入力1">
+    <textarea rows="3" cols="40"></textarea>
+  </div>
+
+  <div class="row">
+    <input type="text" placeholder="入力2">
+    <textarea rows="3" cols="40"></textarea>
+  </div>
+
+  <div class="row">
+    <input type="text" placeholder="入力3">
+    <textarea rows="3" cols="40"></textarea>
+  </div>
 
   <script>
     const textareas = document.querySelectorAll("textarea");
@@ -45,7 +71,6 @@
         const totalLines = textarea.value.split("\n").length;
 
         if (e.key === "ArrowDown") {
-          // 最終行にいる && 次のテキストエリアが存在する
           if (currentLine === totalLines && index < textareas.length - 1) {
             e.preventDefault();
             textareas[index + 1].focus();
@@ -53,7 +78,6 @@
         }
 
         if (e.key === "ArrowUp") {
-          // 1行目にいる && 前のテキストエリアが存在する
           if (currentLine === 1 && index > 0) {
             e.preventDefault();
             textareas[index - 1].focus();
@@ -65,3 +89,4 @@
 
 </body>
 </html>
+
