@@ -1,0 +1,63 @@
+<label for="input-select">選択または入力:</label>
+<input list="options" id="input-select" name="input-select" placeholder="入力">
+<datalist id="options">
+  <option value="選択肢1">
+  <option value="選択肢2">
+  <option value="選択肢3">
+</datalist>
+
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>セレクトボックス自動更新</title>
+</head>
+<body>
+  <h3>テキストボックス</h3>
+  <input type="text" class="sourceInput" placeholder="項目1を入力">
+  <input type="text" class="sourceInput" placeholder="項目2を入力">
+  <input type="text" class="sourceInput" placeholder="項目3を入力">
+
+  <h3>セレクトボックス</h3>
+  <select id="mySelect">
+    <option disabled selected>ここに項目が表示されます</option>
+  </select>
+
+  <script>
+    const inputs = document.querySelectorAll(".sourceInput");
+    const select = document.getElementById("mySelect");
+
+    // 入力値でセレクトボックスを更新する関数
+    function updateSelectBox() {
+      select.innerHTML = ""; // 初期化
+
+      let hasValidInput = false;
+      inputs.forEach(input => {
+        const value = input.value.trim();
+        if (value !== "") {
+          const option = document.createElement("option");
+          option.value = value;
+          option.text = value;
+          select.appendChild(option);
+          hasValidInput = true;
+        }
+      });
+
+      if (!hasValidInput) {
+        const placeholder = document.createElement("option");
+        placeholder.disabled = true;
+        placeholder.selected = true;
+        placeholder.text = "有効な入力がありません";
+        select.appendChild(placeholder);
+      }
+    }
+
+    // 全てのinputに focus/blur イベントを追加
+    inputs.forEach(input => {
+      input.addEventListener("focus", updateSelectBox);
+      input.addEventListener("blur", updateSelectBox);
+    });
+  </script>
+</body>
+</html>
