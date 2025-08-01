@@ -1,10 +1,3 @@
-<label for="input-select">選択または入力:</label>
-<input list="options" id="input-select" name="input-select" placeholder="入力">
-<datalist id="options">
-  <option value="選択肢1">
-  <option value="選択肢2">
-  <option value="選択肢3">
-</datalist>
 
 
 <!DOCTYPE html>
@@ -14,19 +7,28 @@
   <title>セレクトボックス自動更新</title>
 </head>
 <body>
+
+
+
   <h3>テキストボックス</h3>
   <input type="text" class="sourceInput" placeholder="項目1を入力">
   <input type="text" class="sourceInput" placeholder="項目2を入力">
   <input type="text" class="sourceInput" placeholder="項目3を入力">
 
   <h3>セレクトボックス</h3>
-  <select id="mySelect">
-    <option disabled selected>ここに項目が表示されます</option>
-  </select>
+  <label for="input-select">選択または入力:</label>
+  <input list="options" id="input-select" name="input-select" placeholder="入力">
+  <datalist id="options">
+    <option value="選択肢1">
+    <option value="選択肢2">
+    <option value="選択肢3">
+  </datalist>
+  
+
 
   <script>
     const inputs = document.querySelectorAll(".sourceInput");
-    const select = document.getElementById("mySelect");
+    const select = document.getElementById("options");
 
     // 入力値でセレクトボックスを更新する関数
     function updateSelectBox() {
