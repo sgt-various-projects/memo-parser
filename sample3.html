@@ -44,6 +44,7 @@
         const items = ["りんご", "ぶどあ", "ぶどう", "ぶどうジュース", "パイナップル"];
         let activeIndex = -1;
         let currentInput = null;
+        let lastCommittedValue = "";
 
         inputs.forEach(input => {
             input.addEventListener("input", () => showList(input));
@@ -52,44 +53,26 @@
                 const val = input.value.trim();
                 if (!val) return;
 
-                // 既に存在していたら削除
                 const existingIndex = items.indexOf(val);
                 if (existingIndex !== -1) {
-                    items.splice(existingIndex, 1); // その位置から1つ削除
+                    items.splice(existingIndex, 1);
                 }
-
-                // 先頭に追加
                 items.unshift(val);
-            });
-
-            input.addEventListener("focusout", () => {
-                // 少し遅らせて、mousedown処理を優先させる
-                // ✅ 修正後（即時寄りに短縮）
-                setTimeout(() => {
-                    if (
-                        document.activeElement !== list &&
-                        !list.contains(document.activeElement)
-                    ) {
-                        list.style.display = "none";
-                        activeIndex = -1;
-                    }
-                }, 10); // 10msに短縮
-            });
-
-            // blur の代わり
-            document.addEventListener("click", (e) => {
-                if (
-                    currentInput &&
-                    e.target !== currentInput && // 現在の input 以外
-                    !list.contains(e.target)     // リスト内でもない
-                ) {
-                    list.style.display = "none";
-                    activeIndex = -1;
-                }
+                lastCommittedValue = val;
             });
 
             input.addEventListener("keydown", (e) => {
                 const options = list.querySelectorAll("li");
+
+                if (e.altKey && e.key.toLowerCase() === "u") {
+                    e.preventDefault();
+                    if (lastCommittedValue) {
+                        input.value = lastCommittedValue;
+                        showList(input);
+                    }
+                    return;
+                }
+
                 if (list.style.display === "block" && options.length > 0) {
                     if (e.key === "ArrowDown") {
                         e.preventDefault();
@@ -101,12 +84,37 @@
                         updateActiveOption(options);
                     } else if (e.key === "Enter" && activeIndex >= 0) {
                         e.preventDefault();
-                        currentInput.value = options[activeIndex].textContent;
+                        const selected = options[activeIndex].textContent;
+                        input.value = selected;
+                        lastCommittedValue = selected;
                         list.style.display = "none";
                         activeIndex = -1;
                     }
                 }
             });
+
+            input.addEventListener("focusout", () => {
+                setTimeout(() => {
+                    if (
+                        document.activeElement !== list &&
+                        !list.contains(document.activeElement)
+                    ) {
+                        list.style.display = "none";
+                        activeIndex = -1;
+                    }
+                }, 10);
+            });
+        });
+
+        document.addEventListener("click", (e) => {
+            if (
+                currentInput &&
+                e.target !== currentInput &&
+                !list.contains(e.target)
+            ) {
+                list.style.display = "none";
+                activeIndex = -1;
+            }
         });
 
         function showList(input) {
@@ -115,7 +123,6 @@
             list.innerHTML = "";
             activeIndex = -1;
 
-            // 空文字なら表示しない
             if (!val) {
                 list.style.display = "none";
                 return;
@@ -126,7 +133,6 @@
             list.style.left = `${window.scrollX + rect.left}px`;
             list.style.width = `${rect.width}px`;
 
-            // フィルタ：部分一致するが、完全一致を除いたものだけ
             const filtered = items.filter(item =>
                 item.includes(val) && item.toLowerCase() !== val
             );
@@ -141,6 +147,7 @@
                 li.textContent = item;
                 li.addEventListener("mousedown", () => {
                     input.value = item;
+                    lastCommittedValue = item;
                     list.style.display = "none";
                 });
                 list.appendChild(li);
@@ -157,57 +164,6 @@
                 }
             });
         }
-
-        let lastCommittedValue = "";
-
-inputs.forEach(input => {
-    input.addEventListener("input", () => showList(input));
-
-    input.addEventListener("change", () => {
-        const val = input.value.trim();
-        if (!val) return;
-
-        const existingIndex = items.indexOf(val);
-        if (existingIndex !== -1) {
-            items.splice(existingIndex, 1);
-        }
-        items.unshift(val);
-        lastCommittedValue = val; // 🔸ここで保存
-    });
-
-    input.addEventListener("keydown", (e) => {
-        const options = list.querySelectorAll("li");
-
-        if (e.altKey && e.key.toLowerCase() === "u") {
-            e.preventDefault();
-            if (lastCommittedValue) {
-                input.value = lastCommittedValue;
-                showList(input); // オートコンプリート更新
-            }
-            return;
-        }
-
-        if (list.style.display === "block" && options.length > 0) {
-            if (e.key === "ArrowDown") {
-                e.preventDefault();
-                activeIndex = (activeIndex + 1) % options.length;
-                updateActiveOption(options);
-            } else if (e.key === "ArrowUp") {
-                e.preventDefault();
-                activeIndex = (activeIndex - 1 + options.length) % options.length;
-                updateActiveOption(options);
-            } else if (e.key === "Enter" && activeIndex >= 0) {
-                e.preventDefault();
-                const selected = options[activeIndex].textContent;
-                input.value = selected;
-                lastCommittedValue = selected; // 🔸リスト選択時も記録
-                list.style.display = "none";
-                activeIndex = -1;
-            }
-        }
-    });
-});
-
     </script>
 </body>
 
