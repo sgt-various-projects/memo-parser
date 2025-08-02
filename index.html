@@ -86,7 +86,8 @@
 
     <button onclick="sortByTextbox()">テキストボックスの値でソート</button>
     <button onclick="exportToOrg()">org-modeにエクスポート</button>
-<br><br>    <form autocomplete="off">
+    <br><br>
+    <form autocomplete="off">
         <div id="container">
             <div class="input-row">
                 <input type="search" class="textbox" autocomplete="off" tabindex="1">
@@ -114,6 +115,20 @@
     </form>
 
     <script>
+        window.addEventListener('wheel', function (e) {
+            if (e.ctrlKey) {
+                // 拡大縮小のデフォルト動作を防ぐ
+                e.preventDefault();
+
+                // スクロールを強制的に行う
+                window.scrollBy({
+                    top: e.deltaY,
+                    left: e.deltaX,
+                    behavior: 'auto'
+                });
+            }
+        }, { passive: false }); // ← e.preventDefault() を有効にするには必要
+
         // テキストボックス → テキストエリア 右矢印
         document.querySelectorAll('.input-row .textbox').forEach(textbox => {
             textbox.addEventListener('keydown', function (event) {
