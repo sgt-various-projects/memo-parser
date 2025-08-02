@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Orgモードエクスポート</title>
+  <style>
+    .input-row {
+      display: flex;
+      margin-bottom: 10px;
+    }
+    .textbox {
+      width: 200px;
+      height: 25px;
+      margin-right: 10px;
+    }
+    .textarea {
+      width: 300px;
+      height: 100px;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="container">
+    <div class="input-row">
+      <input type="text" class="textbox" value="TODO">
+      <textarea class="textarea">やること１</textarea>
+    </div>
+    <div class="input-row">
+      <input type="text" class="textbox" value="アイデア">
+      <textarea class="textarea">新しいUI案</textarea>
+    </div>
+    <div class="input-row">
+      <input type="text" class="textbox" value="TODO">
+      <textarea class="textarea">やること２</textarea>
+    </div>
+    <div class="input-row">
+      <input type="text" class="textbox" value="">
+      <textarea class="textarea">未分類のメモ</textarea>
+    </div>
+  </div>
+
+  <button onclick="exportToOrg()">org-modeにエクスポート</button>
+
+  <script>
+    function exportToOrg() {
+      const rows = document.querySelectorAll('.input-row');
+      const outlineMap = new Map();
+
+      rows.forEach(row => {
+        const title = row.querySelector('.textbox').value.trim() || '未整理';
+        const content = row.querySelector('.textarea').value.trim();
+
+        if (!outlineMap.has(title)) {
+          outlineMap.set(title, []);
+        }
+        outlineMap.get(title).push(content);
+      });
+
+      let orgText = '';
+
+      for (const [title, contents] of outlineMap.entries()) {
+        orgText += `** ${title}\n\n`; // アウトラインの下に空行を追加
+        contents.forEach(text => {
+          orgText += `${text}\n\n`;
+        });
+      }
+
+      const blob = new Blob([orgText], { type: 'text/plain' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'export.org';
+      a.click();
+    }
+  </script>
+
+</body>
+</html>
