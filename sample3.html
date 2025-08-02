@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>カスタムオートコンプリート</title>
+  <style>
+    #customList {
+      border: 1px solid #ccc;
+      display: none;
+      padding: 0;
+      list-style: none;
+      max-height: 100px;
+      overflow-y: auto;
+      position: absolute;
+      background-color: white;
+      width: 200px;
+      margin: 0;
+      max-height: 200px;       /* 高さ制限を設定 */
+    }
+
+    #customList li {
+      padding: 4px;
+      cursor: pointer;
+    }
+
+    #customList li.active {
+      background-color: #b3d4fc;
+    }
+  </style>
+</head>
+<body>
+  <input type="text" id="customInput" autocomplete="off" style="width: 200px;">
+  <ul id="customList"></ul>
+
+  <script>
+    const input = document.getElementById("customInput");
+    const list = document.getElementById("customList");
+    const items = ["りんご", "ぶどあ", "ぶどう", "みかん", "パイナップル"];
+    let activeIndex = -1;
+
+    input.addEventListener("input", showList);
+    input.addEventListener("focus", showList);
+    input.addEventListener("blur", () => setTimeout(() => {
+      list.style.display = "none";
+      activeIndex = -1;
+    }, 100));
+
+    input.addEventListener("keydown", (e) => {
+      const options = list.querySelectorAll("li");
+      if (list.style.display === "block" && options.length > 0) {
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          activeIndex = (activeIndex + 1) % options.length;
+          updateActiveOption(options);
+        } else if (e.key === "ArrowUp") {
+          e.preventDefault();
+          activeIndex = (activeIndex - 1 + options.length) % options.length;
+          updateActiveOption(options);
+        } else if (e.key === "Enter" && activeIndex >= 0) {
+          e.preventDefault();
+          input.value = options[activeIndex].textContent;
+          list.style.display = "none";
+          activeIndex = -1;
+        }
+      }
+    });
+
+    function showList() {
+      const val = input.value.toLowerCase();
+      list.innerHTML = "";
+      activeIndex = -1;
+
+      const filtered = items.filter(item => item.includes(val));
+      filtered.forEach(item => {
+        const li = document.createElement("li");
+        li.textContent = item;
+        li.addEventListener("mousedown", () => {
+          input.value = item;
+          list.style.display = "none";
+        });
+        list.appendChild(li);
+      });
+
+      list.style.display = filtered.length > 0 ? "block" : "none";
+    }
+
+    function updateActiveOption(options) {
+    options.forEach((li, idx) => {
+        li.classList.toggle("active", idx === activeIndex);
+        if (idx === activeIndex) {
+        li.scrollIntoView({ block: "nearest" });
+        }
+    });
+    }
+  </script>
