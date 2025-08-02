@@ -158,6 +158,55 @@
             });
         }
 
+        let lastCommittedValue = "";
+
+inputs.forEach(input => {
+    input.addEventListener("input", () => showList(input));
+
+    input.addEventListener("change", () => {
+        const val = input.value.trim();
+        if (!val) return;
+
+        const existingIndex = items.indexOf(val);
+        if (existingIndex !== -1) {
+            items.splice(existingIndex, 1);
+        }
+        items.unshift(val);
+        lastCommittedValue = val; // 🔸ここで保存
+    });
+
+    input.addEventListener("keydown", (e) => {
+        const options = list.querySelectorAll("li");
+
+        if (e.altKey && e.key.toLowerCase() === "u") {
+            e.preventDefault();
+            if (lastCommittedValue) {
+                input.value = lastCommittedValue;
+                showList(input); // オートコンプリート更新
+            }
+            return;
+        }
+
+        if (list.style.display === "block" && options.length > 0) {
+            if (e.key === "ArrowDown") {
+                e.preventDefault();
+                activeIndex = (activeIndex + 1) % options.length;
+                updateActiveOption(options);
+            } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                activeIndex = (activeIndex - 1 + options.length) % options.length;
+                updateActiveOption(options);
+            } else if (e.key === "Enter" && activeIndex >= 0) {
+                e.preventDefault();
+                const selected = options[activeIndex].textContent;
+                input.value = selected;
+                lastCommittedValue = selected; // 🔸リスト選択時も記録
+                list.style.display = "none";
+                activeIndex = -1;
+            }
+        }
+    });
+});
 
     </script>
 </body>
