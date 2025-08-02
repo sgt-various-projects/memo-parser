@@ -516,6 +516,9 @@
                     const input = document.createElement('input');
                     input.type = 'text';
                     input.className = 'textbox';
+                    input.tabIndex = 6 + i;
+                    input.type = "search";
+                    input.autocomplete = "off";
 
                     const textarea = document.createElement('textarea');
                     textarea.className = 'textarea';
