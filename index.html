@@ -52,17 +52,19 @@
         .input-row {
             display: flex;
             align-items: flex-start;
-            margin-bottom: 10px;
+            /* ← これで上ぞろえ */
+            margin-bottom: 5px;
         }
 
         .textbox {
-            width: 200px;
+            width: 400px;
             height: 25px;
             margin-right: 10px;
+            margin-top: 0px;
         }
 
         .textarea {
-            width: 300px;
+            width: 800px;
             height: 70px;
         }
 
@@ -84,8 +86,7 @@
 
     <button onclick="sortByTextbox()">テキストボックスの値でソート</button>
     <button onclick="exportToOrg()">org-modeにエクスポート</button>
-
-    <form autocomplete="off">
+<br><br>    <form autocomplete="off">
         <div id="container">
             <div class="input-row">
                 <input type="search" class="textbox" autocomplete="off" tabindex="1">
@@ -461,7 +462,7 @@
 
                 orgText += `** ${title}\n\n`;
                 contents.forEach(text => {
-                    orgText += `${text}\n\n`;
+                    orgText += `${text}\n\n\n`;
                 });
             }
 
@@ -480,20 +481,44 @@
         function expandToTextareas() {
             const raw = document.getElementById('importBox').value;
 
-            // 2行以上の空行を区切りとしてブロック分割
+            // 2行以上の空行で区切る
             const blocks = raw
-                .split(/\n{2,}/) // 2行以上の空行を区切りとする
+                .split(/\n{2,}/)
                 .map(b => b.trim())
                 .filter(b => b !== '');
 
-            const textareas = document.querySelectorAll('.textarea');
+            const container = document.getElementById('container');
+            let textareas = container.querySelectorAll('.textarea');
+            const existingCount = textareas.length;
+            const neededCount = blocks.length;
 
-            for (let i = 0; i < textareas.length; i++) {
-                textareas[i].value = blocks[i] || ''; // 空になった部分は空にする
+            // 不足している分だけテキストボックス＋テキストエリアを追加
+            if (neededCount > existingCount) {
+                for (let i = 0; i < neededCount - existingCount; i++) {
+                    const row = document.createElement('div');
+                    row.className = 'input-row';
+
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.className = 'textbox';
+
+                    const textarea = document.createElement('textarea');
+                    textarea.className = 'textarea';
+
+                    row.appendChild(input);
+                    row.appendChild(textarea);
+                    container.appendChild(row);
+                }
             }
 
-            if (blocks.length > textareas.length) {
-                alert(`⚠ 展開できない内容が ${blocks.length - textareas.length} 件あります（テキストエリアが足りません）。`);
+            // すべてのテキストエリアを取得しなおす（追加された分も含めて）
+            textareas = container.querySelectorAll('.textarea');
+
+            // ブロックを順番にテキストエリアに入力
+            for (let i = 0; i < blocks.length; i++) {
+                textareas[i].value = blocks[i];
+                textareas[i].style.height = "auto"; // 一旦リセット
+                textareas[i].style.height = textareas[i].scrollHeight + "px"; // 内容に応じて再設定
             }
         }
 
