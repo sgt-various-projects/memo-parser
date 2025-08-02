@@ -65,10 +65,23 @@
             width: 300px;
             height: 70px;
         }
+
+        #importBox {
+            width: 600px;
+            height: 400px;
+        }
     </style>
 </head>
 
 <body>
+    <button id="toggleBtn" onclick="toggleImportSection()">🔽 インポート欄を非表示</button>
+    <div id="importSection">
+        <h3>📥 インポートテキストエリア（ここから展開）</h3>
+        <textarea id="importBox" placeholder="空行で区切られたテキストブロックをここに貼り付けてください"></textarea>
+        <br>
+        <button onclick="expandToTextareas()">▶ テキストエリアに展開</button>
+    </div>
+
     <button onclick="sortByTextbox()">テキストボックスの値でソート</button>
     <button onclick="exportToOrg()">org-modeにエクスポート</button>
 
@@ -464,6 +477,38 @@
             a.click();
         }
 
+        function expandToTextareas() {
+            const raw = document.getElementById('importBox').value;
+
+            // 2行以上の空行を区切りとしてブロック分割
+            const blocks = raw
+                .split(/\n{2,}/) // 2行以上の空行を区切りとする
+                .map(b => b.trim())
+                .filter(b => b !== '');
+
+            const textareas = document.querySelectorAll('.textarea');
+
+            for (let i = 0; i < textareas.length; i++) {
+                textareas[i].value = blocks[i] || ''; // 空になった部分は空にする
+            }
+
+            if (blocks.length > textareas.length) {
+                alert(`⚠ 展開できない内容が ${blocks.length - textareas.length} 件あります（テキストエリアが足りません）。`);
+            }
+        }
+
+        function toggleImportSection() {
+            const section = document.getElementById('importSection');
+            const btn = document.getElementById('toggleBtn');
+
+            if (section.style.display === 'none') {
+                section.style.display = 'block';
+                btn.textContent = '🔽 インポート欄を非表示';
+            } else {
+                section.style.display = 'none';
+                btn.textContent = '🔼 インポート欄を表示';
+            }
+        }
     </script>
 </body>
 

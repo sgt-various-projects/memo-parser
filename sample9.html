@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Orgモード・インポート展開機能</title>
+  <style>
+    .input-row {
+      display: flex;
+      margin-bottom: 10px;
+    }
+    .textbox {
+      width: 200px;
+      height: 25px;
+      margin-right: 10px;
+    }
+    .textarea {
+      width: 300px;
+      height: 100px;
+    }
+    #importBox {
+      width: 100%;
+      height: 200px;
+      margin-bottom: 15px;
+    }
+  </style>
+</head>
+<body>
+
+  <h3>📥 インポートテキストエリア（ここから展開）</h3>
+  <textarea id="importBox" placeholder="空行で区切られたテキストブロックをここに貼り付けてください"></textarea>
+  <br>
+  <button onclick="expandToTextareas()">▶ テキストエリアに展開</button>
+
+  <h3>📄 各項目</h3>
+  <div id="container">
+    <div class="input-row">
+      <input type="text" class="textbox" value="TODO">
+      <textarea class="textarea"></textarea>
+    </div>
+    <div class="input-row">
+      <input type="text" class="textbox" value="アイデア">
+      <textarea class="textarea"></textarea>
+    </div>
+    <div class="input-row">
+      <input type="text" class="textbox" value="TODO">
+      <textarea class="textarea"></textarea>
+    </div>
+    <div class="input-row">
+      <input type="text" class="textbox" value="">
+      <textarea class="textarea"></textarea>
+    </div>
+  </div>
+
+  <script>
+    function expandToTextareas() {
+      const raw = document.getElementById('importBox').value;
+
+      // 2行以上の空行を区切りとしてブロック分割
+      const blocks = raw
+        .split(/\n{2,}/) // 2行以上の空行を区切りとする
+        .map(b => b.trim())
+        .filter(b => b !== '');
+
+      const textareas = document.querySelectorAll('.textarea');
+
+      for (let i = 0; i < textareas.length; i++) {
+        textareas[i].value = blocks[i] || ''; // 空になった部分は空にする
+      }
+
+      if (blocks.length > textareas.length) {
+        alert(`⚠ 展開できない内容が ${blocks.length - textareas.length} 件あります（テキストエリアが足りません）。`);
+      }
+    }
+  </script>
+
+</body>
+</html>
