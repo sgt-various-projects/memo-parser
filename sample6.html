@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>複数選択＋入力補完</title>
+  <style>
+    .textbox {
+      width: 200px;
+      height: 25px;
+      margin: 10px;
+      display: block;
+    }
+
+    .selected {
+      background-color: #cceeff;
+    }
+
+    #selectionBox {
+      position: absolute;
+      border: 1px dashed #00f;
+      background-color: rgba(0, 0, 255, 0.1);
+      display: none;
+      pointer-events: none;
+      z-index: 1000;
+    }
+
+    #customList {
+      border: 1px solid #ccc;
+      display: none;
+      padding: 0;
+      list-style: none;
+      max-height: 200px;
+      overflow-y: auto;
+      position: absolute;
+      background-color: white;
+      width: 200px;
+      margin: 0;
+      z-index: 2000;
+    }
+
+    #customList li {
+      padding: 4px;
+      cursor: pointer;
+    }
+
+    #customList li.active {
+      background-color: #b3d4fc;
+    }
+  </style>
+</head>
+<body>
+
+  <input type="text" class="textbox">
+  <input type="text" class="textbox">
+  <input type="text" class="textbox">
+  <input type="text" class="textbox">
+  <input type="text" class="textbox">
+  <ul id="customList"></ul>
+  <div id="selectionBox"></div>
+
+  <script>
+    const textboxes = document.querySelectorAll('.textbox');
+    const selectionBox = document.getElementById('selectionBox');
+    const list = document.getElementById("customList");
+    const items = ["りんご", "ぶどあ", "ぶどう", "ぶどうジュース", "パイナップル"];
+    let startX, startY, isSelecting = false, isCtrlPressed = false;
+    let currentInput = null, activeIndex = -1, lastCommittedValue = "";
+
+    // 入力補完処理
+    function showList(input) {
+      currentInput = input;
+      const val = input.value.toLowerCase();
+      list.innerHTML = "";
+      activeIndex = -1;
+
+      if (!val) {
+        list.style.display = "none";
+        return;
+      }
+
+      const rect = input.getBoundingClientRect();
+      list.style.top = `${window.scrollY + rect.bottom}px`;
+      list.style.left = `${window.scrollX + rect.left}px`;
+      list.style.width = `${rect.width}px`;
+
+      const filtered = items.filter(item => item.includes(val) && item.toLowerCase() !== val);
+      if (filtered.length === 0) {
+        list.style.display = "none";
+        return;
+      }
+
+      filtered.forEach(item => {
+        const li = document.createElement("li");
+        li.textContent = item;
+        li.addEventListener("mousedown", () => {
+          input.value = item;
+          lastCommittedValue = item;
+          list.style.display = "none";
+          updateItems(item);
+        });
+        list.appendChild(li);
+      });
+
+      list.style.display = "block";
+    }
+
+    function updateActiveOption(options) {
+      options.forEach((li, idx) => {
+        li.classList.toggle("active", idx === activeIndex);
+        if (idx === activeIndex) {
+          li.scrollIntoView({ block: "nearest" });
+        }
+      });
+    }
+
+    function updateItems(val) {
+      const idx = items.indexOf(val);
+      if (idx !== -1) items.splice(idx, 1);
+      items.unshift(val);
+    }
+
+    textboxes.forEach(input => {
+      input.addEventListener("input", () => showList(input));
+
+      input.addEventListener("keydown", (e) => {
+        const options = list.querySelectorAll("li");
+
+        if (e.altKey && e.key.toLowerCase() === "u") {
+          e.preventDefault();
+          if (lastCommittedValue) {
+            input.value = lastCommittedValue;
+            showList(input);
+          }
+        }
+
+        if (e.key === "ArrowDown" && options.length > 0) {
+          e.preventDefault();
+          activeIndex = (activeIndex + 1) % options.length;
+          updateActiveOption(options);
+        } else if (e.key === "ArrowUp" && options.length > 0) {
+          e.preventDefault();
+          activeIndex = (activeIndex - 1 + options.length) % options.length;
+          updateActiveOption(options);
+        } else if (e.key === "Enter" && activeIndex >= 0) {
+          e.preventDefault();
+          const selected = options[activeIndex].textContent;
+          input.value = selected;
+          lastCommittedValue = selected;
+          updateItems(selected);
+          list.style.display = "none";
+        }
+      });
+
+      input.addEventListener("focus", () => {
+        currentInput = input;
+      });
+
+      input.addEventListener("blur", () => {
+        setTimeout(() => {
+          if (
+            document.activeElement !== list &&
+            !list.contains(document.activeElement)
+          ) {
+            list.style.display = "none";
+            activeIndex = -1;
+          }
+        }, 10);
+      });
+    });
+
+    // 複数選択用
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Control') isCtrlPressed = true;
+    });
+
+    document.addEventListener('keyup', (e) => {
+      if (e.key === 'Control') {
+        isCtrlPressed = false;
+        const selected = Array.from(document.querySelectorAll('.textbox.selected'));
+        if (selected.length > 1) {
+          const value = prompt("入力する値を指定してください：");
+          if (value !== null) {
+            selected.forEach(el => {
+              el.value = value;
+              el.classList.remove('selected');
+              updateItems(value);
+            });
+            const all = Array.from(document.querySelectorAll('.textbox'));
+            const last = selected[selected.length - 1];
+            const idx = all.indexOf(last);
+            if (idx >= 0 && idx + 1 < all.length) {
+              all[idx + 1].focus();
+            }
+          } else {
+            selected.forEach(el => el.classList.remove('selected'));
+          }
+        }
+      }
+    });
+
+    document.addEventListener('mousedown', (e) => {
+      if (e.target.classList.contains('textbox') && isCtrlPressed) {
+        e.target.classList.toggle('selected');
+        return;
+      }
+
+      if (e.target.tagName !== 'INPUT') {
+        isSelecting = true;
+        startX = e.pageX;
+        startY = e.pageY;
+
+        selectionBox.style.left = startX + 'px';
+        selectionBox.style.top = startY + 'px';
+        selectionBox.style.width = '0px';
+        selectionBox.style.height = '0px';
+        selectionBox.style.display = 'block';
+
+        document.querySelectorAll('.textbox').forEach(el => el.classList.remove('selected'));
+      }
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isSelecting) return;
+
+      const x = Math.min(e.pageX, startX);
+      const y = Math.min(e.pageY, startY);
+      const w = Math.abs(e.pageX - startX);
+      const h = Math.abs(e.pageY - startY);
+
+      selectionBox.style.left = x + 'px';
+      selectionBox.style.top = y + 'px';
+      selectionBox.style.width = w + 'px';
+      selectionBox.style.height = h + 'px';
+
+      const boxRect = selectionBox.getBoundingClientRect();
+      document.querySelectorAll('.textbox').forEach(el => {
+        const rect = el.getBoundingClientRect();
+        const overlap = !(rect.right < boxRect.left ||
+                          rect.left > boxRect.right ||
+                          rect.bottom < boxRect.top ||
+                          rect.top > boxRect.bottom);
+        el.classList.toggle('selected', overlap);
+      });
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (!isSelecting) return;
+      isSelecting = false;
+      selectionBox.style.display = 'none';
+
+      const selected = Array.from(document.querySelectorAll('.textbox.selected'));
+      if (selected.length > 1) {
+        const value = prompt("入力する値を指定してください：");
+        if (value !== null) {
+          selected.forEach(el => {
+            el.value = value;
+            el.classList.remove('selected');
+            updateItems(value);
+          });
+
+          const all = Array.from(document.querySelectorAll('.textbox'));
+          const last = selected[selected.length - 1];
+          const idx = all.indexOf(last);
+          if (idx >= 0 && idx + 1 < all.length) {
+            all[idx + 1].focus();
+          }
+        } else {
+          selected.forEach(el => el.classList.remove('selected'));
+        }
+      }
+    });
+
+    document.addEventListener("click", (e) => {
+      if (
+        currentInput &&
+        e.target !== currentInput &&
+        !list.contains(e.target)
+      ) {
+        list.style.display = "none";
+        activeIndex = -1;
+      }
+    });
+  </script>
+</body>
+</html>
