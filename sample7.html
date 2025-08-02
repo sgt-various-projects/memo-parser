@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>テキストペアソート</title>
+  <style>
+    .input-row {
+      display: flex;
+      align-items: flex-start;
+      margin-bottom: 10px;
+    }
+
+    .textbox {
+      width: 200px;
+      height: 25px;
+      margin-right: 10px;
+    }
+
+    .textarea {
+      width: 300px;
+      height: 100px;
+    }
+
+    #container {
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="container">
+    <div class="input-row">
+      <input type="text" class="textbox" value="りんご">
+      <textarea class="textarea">りんごの説明</textarea>
+    </div>
+    <div class="input-row">
+      <input type="text" class="textbox" value="ばなな">
+      <textarea class="textarea">ばななの説明</textarea>
+    </div>
+    <div class="input-row">
+      <input type="text" class="textbox" value="みかん">
+      <textarea class="textarea">みかんの説明</textarea>
+    </div>
+  </div>
+
+  <button onclick="sortByTextbox()">テキストボックスの値でソート</button>
+
+  <script>
+    function sortByTextbox() {
+      const container = document.getElementById("container");
+      const rows = Array.from(container.getElementsByClassName("input-row"));
+
+      // 値を取得してソート
+      rows.sort((a, b) => {
+        const aValue = a.querySelector(".textbox").value;
+        const bValue = b.querySelector(".textbox").value;
+        return aValue.localeCompare(bValue, 'ja');
+      });
+
+      // 一旦中身をクリアしてソートされた順に再挿入
+      container.innerHTML = "";
+      rows.forEach(row => container.appendChild(row));
+    }
+  </script>
+
+</body>
+</html>
