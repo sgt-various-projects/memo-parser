@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>テキストボックス配列更新</title>
+</head>
+<body>
+  <input type="text" class="watch-input" placeholder="入力1"><br>
+  <input type="text" class="watch-input" placeholder="入力2"><br>
+  <input type="text" class="watch-input" placeholder="入力3"><br>
+
+  <script>
+    const values = [];
+
+    function updateValues() {
+      const inputs = document.querySelectorAll('.watch-input');
+      values.length = 0; // 配列をクリア
+      inputs.forEach(input => values.push(input.value));
+      console.log('更新された値:', values);
+    }
+
+    // すべてのテキストボックスにフォーカス/アンフォーカスイベントを付与
+    document.querySelectorAll('.watch-input').forEach(input => {
+      input.addEventListener('focus', updateValues);
+      input.addEventListener('blur', updateValues);
+    });
+  </script>
+</body>
+</html>
