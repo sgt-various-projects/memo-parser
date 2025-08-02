@@ -48,6 +48,14 @@
         inputs.forEach(input => {
             input.addEventListener("input", () => showList(input));
 
+            input.addEventListener("change", () => {
+                const val = input.value.trim();
+                if (val && !items.includes(val)) {
+                    items.unshift(val); // 先頭に追加
+                }
+                showList(input); // 更新後にリストを表示
+            });
+
             input.addEventListener("focusout", () => {
                 // 少し遅らせて、mousedown処理を優先させる
                 // ✅ 修正後（即時寄りに短縮）
@@ -147,4 +155,5 @@
 
     </script>
 </body>
+
 </html>
