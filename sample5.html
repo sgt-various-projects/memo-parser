@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>テキストボックスのドラッグ選択</title>
+  <title>テキストボックスの選択と入力</title>
   <style>
     .textbox {
       width: 200px;
@@ -39,8 +39,53 @@
     const selectionBox = document.getElementById('selectionBox');
     let startX, startY;
     let isSelecting = false;
+    let isCtrlPressed = false;
 
+    // Ctrlキー押下を監視
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Control') {
+        isCtrlPressed = true;
+      }
+    });
+
+    // Ctrlキー離したときにモーダル表示
+    document.addEventListener('keyup', (e) => {
+      if (e.key === 'Control') {
+        isCtrlPressed = false;
+        const selectedBoxes = Array.from(document.querySelectorAll('.textbox.selected'));
+        if (selectedBoxes.length > 1) {
+          const value = prompt("入力する値を指定してください：");
+          if (value !== null) {
+            selectedBoxes.forEach(el => {
+              el.value = value;
+              el.blur();
+              el.classList.remove('selected');
+            });
+
+            const allBoxes = Array.from(document.querySelectorAll('.textbox'));
+            const lastSelected = selectedBoxes[selectedBoxes.length - 1];
+            const lastIndex = allBoxes.indexOf(lastSelected);
+            if (lastIndex >= 0 && lastIndex + 1 < allBoxes.length) {
+              allBoxes[lastIndex + 1].focus();
+            }
+          } else {
+            selectedBoxes.forEach(el => {
+              el.blur();
+              el.classList.remove('selected');
+            });
+          }
+        }
+      }
+    });
+
+    // Ctrl+クリックで個別選択
     document.addEventListener('mousedown', (e) => {
+      if (e.target.classList.contains('textbox') && isCtrlPressed) {
+        e.target.classList.toggle('selected');
+        return;
+      }
+
+      // 通常のドラッグ選択
       if (e.target.tagName !== 'INPUT') {
         isSelecting = true;
         startX = e.pageX;
@@ -106,7 +151,6 @@
             allBoxes[lastIndex + 1].focus();
           }
         } else {
-          // キャンセルされた場合も選択状態解除
           selectedBoxes.forEach(el => {
             el.blur();
             el.classList.remove('selected');
