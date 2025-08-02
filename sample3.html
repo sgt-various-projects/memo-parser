@@ -1,132 +1,150 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
-  <meta charset="UTF-8">
-  <title>カスタムオートコンプリート</title>
-  <style>
-    #customList {
-      border: 1px solid #ccc;
-      display: none;
-      padding: 0;
-      list-style: none;
-      max-height: 200px;
-      overflow-y: auto;
-      position: absolute;
-      background-color: white;
-      width: 200px;
-      margin: 0;
-      z-index: 1000;
-    }
+    <meta charset="UTF-8">
+    <title>カスタムオートコンプリート</title>
+    <style>
+        #customList {
+            border: 1px solid #ccc;
+            display: none;
+            padding: 0;
+            list-style: none;
+            max-height: 200px;
+            overflow-y: auto;
+            position: absolute;
+            background-color: white;
+            width: 200px;
+            margin: 0;
+            z-index: 1000;
+        }
 
-    #customList li {
-      padding: 4px;
-      cursor: pointer;
-    }
+        #customList li {
+            padding: 4px;
+            cursor: pointer;
+        }
 
-    #customList li.active {
-      background-color: #b3d4fc;
-    }
-  </style>
+        #customList li.active {
+            background-color: #b3d4fc;
+        }
+    </style>
 </head>
+
 <body>
-  <form autocomplete="off">
-    <input type="search" class="watch-input" autocomplete="off" style="width: 200px;">
-    <input type="search" class="watch-input" autocomplete="off" style="width: 200px;">
-    <input type="search" class="watch-input" autocomplete="off" style="width: 200px;">
-    <ul id="customList"></ul>
-  </form>
+    <form autocomplete="off">
+        <input type="search" class="watch-input" autocomplete="off" style="width: 200px;">
+        <input type="search" class="watch-input" autocomplete="off" style="width: 200px;">
+        <input type="search" class="watch-input" autocomplete="off" style="width: 200px;">
+        <ul id="customList"></ul>
+    </form>
 
-  <script>
-    const inputs = document.querySelectorAll(".watch-input");
-    const list = document.getElementById("customList");
-    const items = ["りんご", "ぶどあ", "ぶどう", "ぶどうジュース", "パイナップル"];
-    let activeIndex = -1;
-    let currentInput = null;
+    <script>
+        const inputs = document.querySelectorAll(".watch-input");
+        const list = document.getElementById("customList");
+        const items = ["りんご", "ぶどあ", "ぶどう", "ぶどうジュース", "パイナップル"];
+        let activeIndex = -1;
+        let currentInput = null;
 
-    inputs.forEach(input => {
-      input.addEventListener("input", () => showList(input));
+        inputs.forEach(input => {
+            input.addEventListener("input", () => showList(input));
 
-    // blur の代わり
-    document.addEventListener("click", (e) => {
-    if (
-        currentInput &&
-        e.target !== currentInput && // 現在の input 以外
-        !list.contains(e.target)     // リスト内でもない
-    ) {
-        list.style.display = "none";
-        activeIndex = -1;
-    }
-    });      
+            input.addEventListener("focusout", () => {
+                // 少し遅らせて、mousedown処理を優先させる
+                // ✅ 修正後（即時寄りに短縮）
+                setTimeout(() => {
+                    if (
+                        document.activeElement !== list &&
+                        !list.contains(document.activeElement)
+                    ) {
+                        list.style.display = "none";
+                        activeIndex = -1;
+                    }
+                }, 10); // 10msに短縮
+            });
 
-      input.addEventListener("keydown", (e) => {
-        const options = list.querySelectorAll("li");
-        if (list.style.display === "block" && options.length > 0) {
-          if (e.key === "ArrowDown") {
-            e.preventDefault();
-            activeIndex = (activeIndex + 1) % options.length;
-            updateActiveOption(options);
-          } else if (e.key === "ArrowUp") {
-            e.preventDefault();
-            activeIndex = (activeIndex - 1 + options.length) % options.length;
-            updateActiveOption(options);
-          } else if (e.key === "Enter" && activeIndex >= 0) {
-            e.preventDefault();
-            currentInput.value = options[activeIndex].textContent;
-            list.style.display = "none";
+            // blur の代わり
+            document.addEventListener("click", (e) => {
+                if (
+                    currentInput &&
+                    e.target !== currentInput && // 現在の input 以外
+                    !list.contains(e.target)     // リスト内でもない
+                ) {
+                    list.style.display = "none";
+                    activeIndex = -1;
+                }
+            });
+
+            input.addEventListener("keydown", (e) => {
+                const options = list.querySelectorAll("li");
+                if (list.style.display === "block" && options.length > 0) {
+                    if (e.key === "ArrowDown") {
+                        e.preventDefault();
+                        activeIndex = (activeIndex + 1) % options.length;
+                        updateActiveOption(options);
+                    } else if (e.key === "ArrowUp") {
+                        e.preventDefault();
+                        activeIndex = (activeIndex - 1 + options.length) % options.length;
+                        updateActiveOption(options);
+                    } else if (e.key === "Enter" && activeIndex >= 0) {
+                        e.preventDefault();
+                        currentInput.value = options[activeIndex].textContent;
+                        list.style.display = "none";
+                        activeIndex = -1;
+                    }
+                }
+            });
+        });
+
+        function showList(input) {
+            currentInput = input;
+            const val = input.value.toLowerCase();
+            list.innerHTML = "";
             activeIndex = -1;
-          }
+
+            // 空文字なら表示しない
+            if (!val) {
+                list.style.display = "none";
+                return;
+            }
+
+            const rect = input.getBoundingClientRect();
+            list.style.top = `${window.scrollY + rect.bottom}px`;
+            list.style.left = `${window.scrollX + rect.left}px`;
+            list.style.width = `${rect.width}px`;
+
+            // フィルタ：部分一致するが、完全一致を除いたものだけ
+            const filtered = items.filter(item =>
+                item.includes(val) && item.toLowerCase() !== val
+            );
+
+            if (filtered.length === 0) {
+                list.style.display = "none";
+                return;
+            }
+
+            filtered.forEach(item => {
+                const li = document.createElement("li");
+                li.textContent = item;
+                li.addEventListener("mousedown", () => {
+                    input.value = item;
+                    list.style.display = "none";
+                });
+                list.appendChild(li);
+            });
+
+            list.style.display = "block";
         }
-      });
-    });
 
-    function showList(input) {
-  currentInput = input;
-  const val = input.value.toLowerCase();
-  list.innerHTML = "";
-  activeIndex = -1;
-
-  // 空文字なら表示しない
-  if (!val) {
-    list.style.display = "none";
-    return;
-  }
-
-  const rect = input.getBoundingClientRect();
-  list.style.top = `${window.scrollY + rect.bottom}px`;
-  list.style.left = `${window.scrollX + rect.left}px`;
-  list.style.width = `${rect.width}px`;
-
-  // フィルタ：部分一致するが、完全一致を除いたものだけ
-  const filtered = items.filter(item =>
-    item.includes(val) && item.toLowerCase() !== val
-  );
-
-  if (filtered.length === 0) {
-    list.style.display = "none";
-    return;
-  }
-
-  filtered.forEach(item => {
-    const li = document.createElement("li");
-    li.textContent = item;
-    li.addEventListener("mousedown", () => {
-      input.value = item;
-      list.style.display = "none";
-    });
-    list.appendChild(li);
-  });
-
-  list.style.display = "block";
-}
-
-    function updateActiveOption(options) {
-      options.forEach((li, idx) => {
-        li.classList.toggle("active", idx === activeIndex);
-        if (idx === activeIndex) {
-          li.scrollIntoView({ block: "nearest" });
+        function updateActiveOption(options) {
+            options.forEach((li, idx) => {
+                li.classList.toggle("active", idx === activeIndex);
+                if (idx === activeIndex) {
+                    li.scrollIntoView({ block: "nearest" });
+                }
+            });
         }
-      });
-    }
-  </script>
+
+
+    </script>
 </body>
-</h
+</html>
