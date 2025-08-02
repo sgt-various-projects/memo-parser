@@ -29,7 +29,9 @@
   </style>
 </head>
 <body>
-  <input type="text" id="customInput" autocomplete="off" style="width: 200px;">
+  <input type="text" id="customInput" class="watch-input" autocomplete="off" style="width: 200px;">
+  <input type="text" id="customInput" class="watch-input" autocomplete="off" style="width: 200px;">
+  <input type="text" id="customInput" class="watch-input" autocomplete="off" style="width: 200px;">
   <ul id="customList"></ul>
 
   <script>
@@ -92,4 +94,18 @@
         }
     });
     }
+
+    function updateValues() {
+      const inputs = document.querySelectorAll('.watch-input');
+      items.length = 0; // 配列をクリア
+      inputs.forEach(input => items.push(input.value));
+      console.log('更新された値:', items);
+    }
+
+    // すべてのテキストボックスにフォーカス/アンフォーカスイベントを付与
+    document.querySelectorAll('.watch-input').forEach(input => {
+      input.addEventListener('focus', updateValues);
+      input.addEventListener('focus', showList);
+      input.addEventListener('blur', updateValues);
+    });
   </script>
