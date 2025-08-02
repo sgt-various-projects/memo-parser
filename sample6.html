@@ -98,6 +98,41 @@
     </form>
 
     <script>
+    // テキストボックス → テキストエリア 右矢印
+    document.querySelectorAll('.input-row .textbox').forEach(textbox => {
+      textbox.addEventListener('keydown', function (event) {
+        if (event.key === 'ArrowRight') {
+          const isAtEnd = this.selectionStart === this.selectionEnd && this.selectionEnd === this.value.length;
+          if (isAtEnd) {
+            const textarea = this.closest('.input-row').querySelector('.textarea');
+            if (textarea) {
+              event.preventDefault();
+              textarea.focus();
+            }
+          }
+        }
+      });
+    });
+
+    // テキストエリア → テキストボックス 左矢印
+    document.querySelectorAll('.input-row .textarea').forEach(textarea => {
+      textarea.addEventListener('keydown', function (event) {
+        if (event.key === 'ArrowLeft') {
+          const isAtStart = this.selectionStart === this.selectionEnd && this.selectionStart === 0;
+          if (isAtStart) {
+            const textbox = this.closest('.input-row').querySelector('.textbox');
+            if (textbox) {
+              event.preventDefault();
+              textbox.focus();
+              // 末尾にカーソルを移動
+              const length = textbox.value.length;
+              textbox.setSelectionRange(length, length);
+            }
+          }
+        }
+      });
+    });
+
         const inputs = document.querySelectorAll(".textbox");
         const list = document.getElementById("customList");
         const selectionBox = document.getElementById("selectionBox");
