@@ -95,17 +95,22 @@
         if (value !== null) {
           selectedBoxes.forEach(el => {
             el.value = value;
-            el.blur(); // フォーカス解除
-            el.classList.remove('selected'); // 選択解除
+            el.blur();
+            el.classList.remove('selected');
           });
 
-          // 最後の選択されたボックスの次にフォーカス
           const allBoxes = Array.from(document.querySelectorAll('.textbox'));
           const lastSelected = selectedBoxes[selectedBoxes.length - 1];
           const lastIndex = allBoxes.indexOf(lastSelected);
           if (lastIndex >= 0 && lastIndex + 1 < allBoxes.length) {
             allBoxes[lastIndex + 1].focus();
           }
+        } else {
+          // キャンセルされた場合も選択状態解除
+          selectedBoxes.forEach(el => {
+            el.blur();
+            el.classList.remove('selected');
+          });
         }
       }
     });
