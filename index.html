@@ -87,6 +87,9 @@
     <button onclick="sortByTextbox()">テキストボックスの値でソート</button>
     <button onclick="exportToOrg()">org-modeにエクスポート</button>
     <br><br>
+    <button onclick="outputToTextarea()">📤 テキストエリアにも出力</button>
+    <br><br>
+    <textarea id="orgExportArea" style="width: 800px; height: 400px;" placeholder="org-mode形式の出力がここに表示されます"></textarea>
     <form autocomplete="off">
         <div id="container">
             <div class="input-row">
@@ -557,6 +560,37 @@
         }
 
         document.querySelectorAll('.textbox').forEach(setupAutocomplete);
+
+        function outputToTextarea() {
+            const rows = document.querySelectorAll('.input-row');
+            const outlineMap = new Map();
+
+            rows.forEach(row => {
+                const title = row.querySelector('.textbox').value.trim() || '未整理';
+                const content = row.querySelector('.textarea').value.trim();
+
+                // テキストエリアが空ならスキップ
+                if (content === '') return;
+
+                if (!outlineMap.has(title)) {
+                    outlineMap.set(title, []);
+                }
+                outlineMap.get(title).push(content);
+            });
+
+            let orgText = '';
+
+            for (const [title, contents] of outlineMap.entries()) {
+                if (contents.length === 0) continue;
+
+                orgText += `** ${title}\n\n`;
+                contents.forEach(text => {
+                    orgText += `${text}\n\n\n`;
+                });
+            }
+
+            document.getElementById("orgExportArea").value = orgText;
+        }
     </script>
 </body>
 
