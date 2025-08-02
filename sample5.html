@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>テキストボックスのドラッグ選択</title>
+  <style>
+    .textbox {
+      width: 200px;
+      height: 25px;
+      margin: 10px;
+      display: block;
+    }
+
+    .selected {
+      background-color: #cceeff;
+    }
+
+    #selectionBox {
+      position: absolute;
+      border: 1px dashed #00f;
+      background-color: rgba(0, 0, 255, 0.1);
+      display: none;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+
+  <input type="text" class="textbox">
+  <input type="text" class="textbox">
+  <input type="text" class="textbox">
+  <input type="text" class="textbox">
+
+  <div id="selectionBox"></div>
+
+  <script>
+    const selectionBox = document.getElementById('selectionBox');
+    let startX, startY;
+
+    let isSelecting = false;
+
+    document.addEventListener('mousedown', (e) => {
+      if (e.target.tagName !== 'INPUT') {
+        isSelecting = true;
+        startX = e.pageX;
+        startY = e.pageY;
+
+        selectionBox.style.left = startX + 'px';
+        selectionBox.style.top = startY + 'px';
+        selectionBox.style.width = '0px';
+        selectionBox.style.height = '0px';
+        selectionBox.style.display = 'block';
+
+        document.querySelectorAll('.textbox').forEach(el => el.classList.remove('selected'));
+      }
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isSelecting) return;
+
+      const x = Math.min(e.pageX, startX);
+      const y = Math.min(e.pageY, startY);
+      const w = Math.abs(e.pageX - startX);
+      const h = Math.abs(e.pageY - startY);
+
+      selectionBox.style.left = x + 'px';
+      selectionBox.style.top = y + 'px';
+      selectionBox.style.width = w + 'px';
+      selectionBox.style.height = h + 'px';
+
+      const boxRect = selectionBox.getBoundingClientRect();
+      document.querySelectorAll('.textbox').forEach(el => {
+        const rect = el.getBoundingClientRect();
+        const overlap = !(rect.right < boxRect.left ||
+                          rect.left > boxRect.right ||
+                          rect.bottom < boxRect.top ||
+                          rect.top > boxRect.bottom);
+        if (overlap) {
+          el.classList.add('selected');
+        } else {
+          el.classList.remove('selected');
+        }
+      });
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (!isSelecting) return;
+      isSelecting = false;
+      selectionBox.style.display = 'none';
+
+      const value = prompt("入力する値を指定してください：");
+      if (value !== null) {
+        document.querySelectorAll('.textbox.selected').forEach(el => el.value = value);
+      }
+    });
+  </script>
+</body>
+</html>
