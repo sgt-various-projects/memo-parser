@@ -63,13 +63,15 @@
 
         .textarea {
             width: 300px;
-            height: 100px;
+            height: 70px;
         }
     </style>
 </head>
 
 <body>
     <button onclick="sortByTextbox()">テキストボックスの値でソート</button>
+    <button onclick="exportToOrg()">org-modeにエクスポート</button>
+
     <form autocomplete="off">
         <div id="container">
             <div class="input-row">
@@ -420,6 +422,48 @@
             container.innerHTML = "";
             rows.forEach(row => container.appendChild(row));
         }
+
+        function exportToOrg() {
+            const rows = document.querySelectorAll('.input-row');
+            const outlineMap = new Map();
+
+            rows.forEach(row => {
+                const title = row.querySelector('.textbox').value.trim() || '未整理';
+                const content = row.querySelector('.textarea').value.trim();
+
+                // テキストエリアが空ならスキップ
+                if (content === '') return;
+
+                if (!outlineMap.has(title)) {
+                    outlineMap.set(title, []);
+                }
+                outlineMap.get(title).push(content);
+            });
+
+            let orgText = '';
+
+            for (const [title, contents] of outlineMap.entries()) {
+                // 本文が空のアウトラインは出力しない
+                if (contents.length === 0) continue;
+
+                orgText += `** ${title}\n\n`;
+                contents.forEach(text => {
+                    orgText += `${text}\n\n`;
+                });
+            }
+
+            if (orgText === '') {
+                alert("出力する内容がありません。");
+                return;
+            }
+
+            const blob = new Blob([orgText], { type: 'text/plain' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'export.org';
+            a.click();
+        }
+
     </script>
 </body>
 
