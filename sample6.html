@@ -98,40 +98,65 @@
     </form>
 
     <script>
-    // テキストボックス → テキストエリア 右矢印
-    document.querySelectorAll('.input-row .textbox').forEach(textbox => {
-      textbox.addEventListener('keydown', function (event) {
-        if (event.key === 'ArrowRight') {
-          const isAtEnd = this.selectionStart === this.selectionEnd && this.selectionEnd === this.value.length;
-          if (isAtEnd) {
-            const textarea = this.closest('.input-row').querySelector('.textarea');
-            if (textarea) {
-              event.preventDefault();
-              textarea.focus();
-            }
-          }
-        }
-      });
-    });
+        // テキストボックス → テキストエリア 右矢印
+        document.querySelectorAll('.input-row .textbox').forEach(textbox => {
+            textbox.addEventListener('keydown', function (event) {
+                if (event.key === 'ArrowRight') {
+                    const isAtEnd = this.selectionStart === this.selectionEnd && this.selectionEnd === this.value.length;
+                    if (isAtEnd) {
+                        const textarea = this.closest('.input-row').querySelector('.textarea');
+                        if (textarea) {
+                            event.preventDefault();
+                            textarea.focus();
+                        }
+                    }
+                }
+            });
+        });
 
-    // テキストエリア → テキストボックス 左矢印
-    document.querySelectorAll('.input-row .textarea').forEach(textarea => {
-      textarea.addEventListener('keydown', function (event) {
-        if (event.key === 'ArrowLeft') {
-          const isAtStart = this.selectionStart === this.selectionEnd && this.selectionStart === 0;
-          if (isAtStart) {
-            const textbox = this.closest('.input-row').querySelector('.textbox');
-            if (textbox) {
-              event.preventDefault();
-              textbox.focus();
-              // 末尾にカーソルを移動
-              const length = textbox.value.length;
-              textbox.setSelectionRange(length, length);
-            }
-          }
-        }
-      });
-    });
+        // テキストエリア → テキストボックス 左矢印
+        document.querySelectorAll('.input-row .textarea').forEach(textarea => {
+            textarea.addEventListener('keydown', function (event) {
+                if (event.key === 'ArrowLeft') {
+                    const isAtStart = this.selectionStart === this.selectionEnd && this.selectionStart === 0;
+                    if (isAtStart) {
+                        const textbox = this.closest('.input-row').querySelector('.textbox');
+                        if (textbox) {
+                            event.preventDefault();
+                            textbox.focus();
+                            // 末尾にカーソルを移動
+                            const length = textbox.value.length;
+                            textbox.setSelectionRange(length, length);
+                        }
+                    }
+                }
+            });
+        });
+
+        const textareas = document.querySelectorAll("textarea");
+
+        textareas.forEach((textarea, index) => {
+            textarea.addEventListener("keydown", (e) => {
+                const cursorPos = textarea.selectionStart;
+                const textUntilCursor = textarea.value.slice(0, cursorPos);
+                const currentLine = textUntilCursor.split("\n").length;
+                const totalLines = textarea.value.split("\n").length;
+
+                if (e.key === "ArrowDown") {
+                    if (currentLine === totalLines && index < textareas.length - 1) {
+                        e.preventDefault();
+                        textareas[index + 1].focus();
+                    }
+                }
+
+                if (e.key === "ArrowUp") {
+                    if (currentLine === 1 && index > 0) {
+                        e.preventDefault();
+                        textareas[index - 1].focus();
+                    }
+                }
+            });
+        });
 
         const inputs = document.querySelectorAll(".textbox");
         const list = document.getElementById("customList");
