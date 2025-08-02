@@ -189,7 +189,6 @@
             });
         });
 
-        const inputs = document.querySelectorAll(".textbox");
         const list = document.getElementById("customList");
         const selectionBox = document.getElementById("selectionBox");
         const items = ["りんご", "ぶどあ", "ぶどう", "ぶどうジュース", "パイナップル"];
@@ -248,73 +247,6 @@
             });
         }
 
-        inputs.forEach(input => {
-            input.addEventListener("input", () => showList(input));
-
-            input.addEventListener("change", () => {
-                const val = input.value.trim();
-                if (!val) return;
-
-                const existingIndex = items.indexOf(val);
-                if (existingIndex !== -1) {
-                    items.splice(existingIndex, 1);
-                }
-                items.unshift(val);
-                lastCommittedValue = val;
-                showList(input); // 入力変更後にもリストを更新表示
-            });
-
-            input.addEventListener("blur", () => {
-                const val = input.value.trim();
-                if (val && !items.includes(val)) {
-                    items.unshift(val);
-                }
-            });
-
-            input.addEventListener("keydown", (e) => {
-                const options = list.querySelectorAll("li");
-
-                if (e.altKey && e.key.toLowerCase() === "u") {
-                    e.preventDefault();
-                    if (lastCommittedValue) {
-                        input.value = lastCommittedValue;
-                        showList(input);
-                    }
-                    return;
-                }
-
-                if (list.style.display === "block" && options.length > 0) {
-                    if (e.key === "ArrowDown") {
-                        e.preventDefault();
-                        activeIndex = (activeIndex + 1) % options.length;
-                        updateActiveOption(options);
-                    } else if (e.key === "ArrowUp") {
-                        e.preventDefault();
-                        activeIndex = (activeIndex - 1 + options.length) % options.length;
-                        updateActiveOption(options);
-                    } else if (e.key === "Enter" && activeIndex >= 0) {
-                        e.preventDefault();
-                        const selected = options[activeIndex].textContent;
-                        input.value = selected;
-                        lastCommittedValue = selected;
-                        list.style.display = "none";
-                        activeIndex = -1;
-                    }
-                }
-            });
-
-            input.addEventListener("focusout", () => {
-                setTimeout(() => {
-                    if (
-                        document.activeElement !== list &&
-                        !list.contains(document.activeElement)
-                    ) {
-                        list.style.display = "none";
-                        activeIndex = -1;
-                    }
-                }, 10);
-            });
-        });
 
         document.addEventListener("click", (e) => {
             if (
@@ -520,6 +452,9 @@
                     input.type = "search";
                     input.autocomplete = "off";
 
+                    // ✅ ここで追加した input に対して補完を設定！
+                    setupAutocomplete(input);  // ← これをこの中に置く！                    
+
                     const textarea = document.createElement('textarea');
                     textarea.className = 'textarea';
 
@@ -552,6 +487,76 @@
                 btn.textContent = '🔼 インポート欄を表示';
             }
         }
+
+        function setupAutocomplete(input) {
+            input.addEventListener("input", () => showList(input));
+
+            input.addEventListener("change", () => {
+                const val = input.value.trim();
+                if (!val) return;
+
+                const existingIndex = items.indexOf(val);
+                if (existingIndex !== -1) {
+                    items.splice(existingIndex, 1);
+                }
+                items.unshift(val);
+                lastCommittedValue = val;
+                showList(input);
+            });
+
+            input.addEventListener("blur", () => {
+                const val = input.value.trim();
+                if (val && !items.includes(val)) {
+                    items.unshift(val);
+                }
+            });
+
+            input.addEventListener("keydown", (e) => {
+                const options = list.querySelectorAll("li");
+
+                if (e.altKey && e.key.toLowerCase() === "u") {
+                    e.preventDefault();
+                    if (lastCommittedValue) {
+                        input.value = lastCommittedValue;
+                        showList(input);
+                    }
+                    return;
+                }
+
+                if (list.style.display === "block" && options.length > 0) {
+                    if (e.key === "ArrowDown") {
+                        e.preventDefault();
+                        activeIndex = (activeIndex + 1) % options.length;
+                        updateActiveOption(options);
+                    } else if (e.key === "ArrowUp") {
+                        e.preventDefault();
+                        activeIndex = (activeIndex - 1 + options.length) % options.length;
+                        updateActiveOption(options);
+                    } else if (e.key === "Enter" && activeIndex >= 0) {
+                        e.preventDefault();
+                        const selected = options[activeIndex].textContent;
+                        input.value = selected;
+                        lastCommittedValue = selected;
+                        list.style.display = "none";
+                        activeIndex = -1;
+                    }
+                }
+            });
+
+            input.addEventListener("focusout", () => {
+                setTimeout(() => {
+                    if (
+                        document.activeElement !== list &&
+                        !list.contains(document.activeElement)
+                    ) {
+                        list.style.display = "none";
+                        activeIndex = -1;
+                    }
+                }, 10);
+            });
+        }
+
+        document.querySelectorAll('.textbox').forEach(setupAutocomplete);
     </script>
 </body>
 
