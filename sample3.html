@@ -45,7 +45,6 @@
 
     inputs.forEach(input => {
       input.addEventListener("input", () => showList(input));
-      input.addEventListener("focus", () => showList(input));
 
     // blur の代わり
     document.addEventListener("click", (e) => {
@@ -86,15 +85,21 @@
   list.innerHTML = "";
   activeIndex = -1;
 
+  // 空文字なら表示しない
+  if (!val) {
+    list.style.display = "none";
+    return;
+  }
+
   const rect = input.getBoundingClientRect();
   list.style.top = `${window.scrollY + rect.bottom}px`;
   list.style.left = `${window.scrollX + rect.left}px`;
   list.style.width = `${rect.width}px`;
 
-  // フィルタ：完全一致を除外して部分一致だけ表示
-  const filtered = items.filter(item => {
-    return item.includes(val) && item.toLowerCase() !== val;
-  });
+  // フィルタ：部分一致するが、完全一致を除いたものだけ
+  const filtered = items.filter(item =>
+    item.includes(val) && item.toLowerCase() !== val
+  );
 
   if (filtered.length === 0) {
     list.style.display = "none";
