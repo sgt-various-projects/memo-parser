@@ -50,10 +50,16 @@
 
             input.addEventListener("change", () => {
                 const val = input.value.trim();
-                if (val && !items.includes(val)) {
-                    items.unshift(val); // 先頭に追加
+                if (!val) return;
+
+                // 既に存在していたら削除
+                const existingIndex = items.indexOf(val);
+                if (existingIndex !== -1) {
+                    items.splice(existingIndex, 1); // その位置から1つ削除
                 }
-                showList(input); // 更新後にリストを表示
+
+                // 先頭に追加
+                items.unshift(val);
             });
 
             input.addEventListener("focusout", () => {
