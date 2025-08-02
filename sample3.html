@@ -9,13 +9,13 @@
       display: none;
       padding: 0;
       list-style: none;
-      max-height: 100px;
+      max-height: 200px;
       overflow-y: auto;
       position: absolute;
       background-color: white;
       width: 200px;
       margin: 0;
-      max-height: 200px;       /* 高さ制限を設定 */
+      z-index: 1000;
     }
 
     #customList li {
@@ -29,87 +29,99 @@
   </style>
 </head>
 <body>
-    <form autocomplete="off">
-  <input type="search" class="watch-input" id="customInput" autocomplete="off" style="width: 200px;">
-  <input type="search" class="watch-input" id="customInput2" autocomplete="off" style="width: 200px;">
-  <input type="search" class="watch-input" id="customInput3" autocomplete="off" style="width: 200px;">
-  <ul id="customList"></ul>
-
+  <form autocomplete="off">
+    <input type="search" class="watch-input" autocomplete="off" style="width: 200px;">
+    <input type="search" class="watch-input" autocomplete="off" style="width: 200px;">
+    <input type="search" class="watch-input" autocomplete="off" style="width: 200px;">
+    <ul id="customList"></ul>
   </form>
 
-  
   <script>
-    const input = document.getElementById("customInput");
+    const inputs = document.querySelectorAll(".watch-input");
     const list = document.getElementById("customList");
-    const items = ["りんご", "ぶどあ", "ぶどう", "みかん", "パイナップル"];
+    const items = ["りんご", "ぶどあ", "ぶどう", "ぶどうジュース", "パイナップル"];
     let activeIndex = -1;
+    let currentInput = null;
 
-    input.addEventListener("input", showList);
-    input.addEventListener("focus", showList);
-    input.addEventListener("blur", () => setTimeout(() => {
-      list.style.display = "none";
-      activeIndex = -1;
-    }, 100));
+    inputs.forEach(input => {
+      input.addEventListener("input", () => showList(input));
+      input.addEventListener("focus", () => showList(input));
 
-    input.addEventListener("keydown", (e) => {
-      const options = list.querySelectorAll("li");
-      if (list.style.display === "block" && options.length > 0) {
-        if (e.key === "ArrowDown") {
-          e.preventDefault();
-          activeIndex = (activeIndex + 1) % options.length;
-          updateActiveOption(options);
-        } else if (e.key === "ArrowUp") {
-          e.preventDefault();
-          activeIndex = (activeIndex - 1 + options.length) % options.length;
-          updateActiveOption(options);
-        } else if (e.key === "Enter" && activeIndex >= 0) {
-          e.preventDefault();
-          input.value = options[activeIndex].textContent;
-          list.style.display = "none";
-          activeIndex = -1;
+    // blur の代わり
+    document.addEventListener("click", (e) => {
+    if (
+        currentInput &&
+        e.target !== currentInput && // 現在の input 以外
+        !list.contains(e.target)     // リスト内でもない
+    ) {
+        list.style.display = "none";
+        activeIndex = -1;
+    }
+    });      
+
+      input.addEventListener("keydown", (e) => {
+        const options = list.querySelectorAll("li");
+        if (list.style.display === "block" && options.length > 0) {
+          if (e.key === "ArrowDown") {
+            e.preventDefault();
+            activeIndex = (activeIndex + 1) % options.length;
+            updateActiveOption(options);
+          } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            activeIndex = (activeIndex - 1 + options.length) % options.length;
+            updateActiveOption(options);
+          } else if (e.key === "Enter" && activeIndex >= 0) {
+            e.preventDefault();
+            currentInput.value = options[activeIndex].textContent;
+            list.style.display = "none";
+            activeIndex = -1;
+          }
         }
-      }
+      });
     });
 
-    function showList() {
-      const val = input.value.toLowerCase();
-      list.innerHTML = "";
-      activeIndex = -1;
+    function showList(input) {
+  currentInput = input;
+  const val = input.value.toLowerCase();
+  list.innerHTML = "";
+  activeIndex = -1;
 
-      const filtered = items.filter(item => item.includes(val));
-      filtered.forEach(item => {
-        const li = document.createElement("li");
-        li.textContent = item;
-        li.addEventListener("mousedown", () => {
-          input.value = item;
-          list.style.display = "none";
-        });
-        list.appendChild(li);
-      });
+  const rect = input.getBoundingClientRect();
+  list.style.top = `${window.scrollY + rect.bottom}px`;
+  list.style.left = `${window.scrollX + rect.left}px`;
+  list.style.width = `${rect.width}px`;
 
-      list.style.display = filtered.length > 0 ? "block" : "none";
-    }
+  // フィルタ：完全一致を除外して部分一致だけ表示
+  const filtered = items.filter(item => {
+    return item.includes(val) && item.toLowerCase() !== val;
+  });
+
+  if (filtered.length === 0) {
+    list.style.display = "none";
+    return;
+  }
+
+  filtered.forEach(item => {
+    const li = document.createElement("li");
+    li.textContent = item;
+    li.addEventListener("mousedown", () => {
+      input.value = item;
+      list.style.display = "none";
+    });
+    list.appendChild(li);
+  });
+
+  list.style.display = "block";
+}
 
     function updateActiveOption(options) {
-    options.forEach((li, idx) => {
+      options.forEach((li, idx) => {
         li.classList.toggle("active", idx === activeIndex);
         if (idx === activeIndex) {
-        li.scrollIntoView({ block: "nearest" });
+          li.scrollIntoView({ block: "nearest" });
         }
-    });
+      });
     }
-
-    function updateValues() {
-      const inputs = document.querySelectorAll('.watch-input');
-      items.length = 0; // 配列をクリア
-      inputs.forEach(input => items.push(input.value));
-      console.log('更新された値:', items);
-    }
-
-    // すべてのテキストボックスにフォーカス/アンフォーカスイベントを付与
-    document.querySelectorAll('.watch-input').forEach(input => {
-      input.addEventListener('focus', updateValues);
-      input.addEventListener('focus', showList);
-      input.addEventListener('blur', updateValues);
-    });
   </script>
+</body>
+</h
