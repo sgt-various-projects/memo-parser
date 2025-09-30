@@ -525,9 +525,12 @@
 
             // ブロックを順番にテキストエリアに入力
             for (let i = 0; i < blocks.length; i++) {
-                const regex_result = blocks[i].match(/^\*\*\s(.*)/);
+                const regex_result = blocks[i].match(/^\*\*\s*(.*)/);
                 if (regex_result !== null) {
                     textboxes[i+1].value = regex_result[1];
+                    if (regex_result[1] == "") {
+                        textboxes[i+1].value = "blank"
+                    }
                 } else {
                     if (textboxes[i].value === "") {
                         textboxes[i].value = textboxes[i-1].value;
