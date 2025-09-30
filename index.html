@@ -79,21 +79,7 @@
     <button id="toggleBtn" onclick="toggleImportSection()">🔽 インポート欄を非表示</button>
     <div id="importSection">
         <h3>📥 インポートテキストエリア（ここから展開）</h3>
-        <textarea id="importBox" placeholder="空行で区切られたテキストブロックをここに貼り付けてください">
-** weeeeew
-
-wefq
-
-
-3f3q
-
-** weeeeew2
-
-wefq
-
-
-3f3q
-</textarea>
+        <textarea id="importBox" placeholder="空行で区切られたテキストブロックをここに貼り付けてください"></textarea>
         <br>
         <button onclick="expandToTextareas()">▶ テキストエリアに展開</button>
         <button onclick="expandToTextareasByOrg()">▶ Orgファイルとしてテキストエリアに展開(2レベルのみ対応)</button>
@@ -541,8 +527,11 @@ wefq
             for (let i = 0; i < blocks.length; i++) {
                 const regex_result = blocks[i].match(/^\*\*\s(.*)/);
                 if (regex_result !== null) {
-                    textboxes[i].value = regex_result[1];
+                    textboxes[i+1].value = regex_result[1];
                 } else {
+                    if (textboxes[i].value === "") {
+                        textboxes[i].value = textboxes[i-1].value;
+                    }
                     textareas[i].value = blocks[i];
                     textareas[i].style.height = "auto"; // 一旦リセット
                     textareas[i].style.height = textareas[i].scrollHeight + "px"; // 内容に応じて再設定
