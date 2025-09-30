@@ -79,9 +79,24 @@
     <button id="toggleBtn" onclick="toggleImportSection()">🔽 インポート欄を非表示</button>
     <div id="importSection">
         <h3>📥 インポートテキストエリア（ここから展開）</h3>
-        <textarea id="importBox" placeholder="空行で区切られたテキストブロックをここに貼り付けてください"></textarea>
+        <textarea id="importBox" placeholder="空行で区切られたテキストブロックをここに貼り付けてください">
+** weeeeew
+
+wefq
+
+
+3f3q
+
+** weeeeew2
+
+wefq
+
+
+3f3q
+</textarea>
         <br>
         <button onclick="expandToTextareas()">▶ テキストエリアに展開</button>
+        <button onclick="expandToTextareasByOrg()">▶ Orgファイルとしてテキストエリアに展開(2レベルのみ対応)</button>
     </div>
 
     <button onclick="sortByTextbox()">テキストボックスの値でソート</button>
@@ -477,6 +492,63 @@
                 textareas[i].style.height = textareas[i].scrollHeight + "px"; // 内容に応じて再設定
             }
         }
+
+
+        function expandToTextareasByOrg() {
+            const raw = document.getElementById('importBox').value;
+
+            // 2行以上の空行で区切る
+            const blocks = raw
+                .split(/\n{2,}/)
+                .map(b => b.trim())
+                .filter(b => b !== '');
+
+            const container = document.getElementById('container');
+            let textareas = container.querySelectorAll('.textarea');
+            const existingCount = textareas.length;
+            const neededCount = blocks.length;
+
+            // 不足している分だけテキストボックス＋テキストエリアを追加
+            if (neededCount > existingCount) {
+                for (let i = 0; i < neededCount - existingCount; i++) {
+                    const row = document.createElement('div');
+                    row.className = 'input-row';
+
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.className = 'textbox';
+                    input.tabIndex = 6 + i;
+                    input.type = "search";
+                    input.autocomplete = "off";
+
+                    // ✅ ここで追加した input に対して補完を設定！
+                    setupAutocomplete(input);  // ← これをこの中に置く！                    
+
+                    const textarea = document.createElement('textarea');
+                    textarea.className = 'textarea';
+
+                    row.appendChild(input);
+                    row.appendChild(textarea);
+                    container.appendChild(row);
+                }
+            }
+
+            // すべてのテキストエリアを取得しなおす（追加された分も含めて）
+            textareas = container.querySelectorAll('.textarea');
+            textboxes = container.querySelectorAll('.textbox');
+
+            // ブロックを順番にテキストエリアに入力
+            for (let i = 0; i < blocks.length; i++) {
+                const regex_result = blocks[i].match(/^\*\*\s(.*)/);
+                if (regex_result !== null) {
+                    textboxes[i].value = regex_result[1];
+                } else {
+                    textareas[i].value = blocks[i];
+                    textareas[i].style.height = "auto"; // 一旦リセット
+                    textareas[i].style.height = textareas[i].scrollHeight + "px"; // 内容に応じて再設定
+                }
+            }
+        }        
 
         function toggleImportSection() {
             const section = document.getElementById('importSection');
