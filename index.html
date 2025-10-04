@@ -153,13 +153,6 @@
         <div id="selectionBox"></div>
     </form>
     <script>
-        function toggleDarkMode() {
-            document.body.classList.toggle('dark-mode');
-            document.body.textarea.classList.toggle('dark-mode');
-            document.body.textbox.classList.toggle('dark-mode');
-            document.body.button.classList.toggle('dark-mode');
-        }
-
         window.addEventListener('wheel', function (e) {
             if (e.ctrlKey) {
                 // 拡大縮小のデフォルト動作を防ぐ
@@ -700,6 +693,14 @@
 
             document.getElementById("orgExportArea").value = orgText;
         }
+
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            document.body.textarea.classList.toggle('dark-mode');
+            document.body.textbox.classList.toggle('dark-mode');
+            document.body.button.classList.toggle('dark-mode');
+        }
+        toggleDarkMode();
     </script>
 </body>
 
