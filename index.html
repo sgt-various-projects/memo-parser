@@ -5,6 +5,17 @@
     <meta charset="UTF-8">
     <title>複合機能テキストボックス</title>
     <style>
+        pre,
+        code {
+            font-family: "Fira Code", "JetBrains Mono", "Source Code Pro", Inconsolata, Menlo, Consolas, monospace;
+            font-size: 0.9rem;
+            /* 適宜調整 */
+            line-height: 1.4;
+            /* 見やすさのため少し余裕を持たせる */
+            white-space: pre;
+            /* 改行・空白を忠実に表現 */
+        }
+
         .dark-mode {
             background-color: #121212;
             color: #eee;
@@ -20,13 +31,13 @@
             background-color: #222;
             color: #eee;
             border-color: #555;
-        }        
+        }
 
         .dark-mode button {
             background-color: #222;
             color: #eee;
             border-color: #555;
-        }    
+        }
 
         .textbox {
             width: 200px;
@@ -146,7 +157,7 @@
             document.body.classList.toggle('dark-mode');
             document.body.textarea.classList.toggle('dark-mode');
             document.body.textbox.classList.toggle('dark-mode');
-            document.body.button.classList.toggle('dark-mode');            
+            document.body.button.classList.toggle('dark-mode');
         }
 
         window.addEventListener('wheel', function (e) {
