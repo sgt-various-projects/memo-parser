@@ -5,6 +5,29 @@
     <meta charset="UTF-8">
     <title>複合機能テキストボックス</title>
     <style>
+        .dark-mode {
+            background-color: #121212;
+            color: #eee;
+        }
+
+        .dark-mode textarea {
+            background-color: #222;
+            color: #eee;
+            border-color: #555;
+        }
+
+        .dark-mode input {
+            background-color: #222;
+            color: #eee;
+            border-color: #555;
+        }        
+
+        .dark-mode button {
+            background-color: #222;
+            color: #eee;
+            border-color: #555;
+        }    
+
         .textbox {
             width: 200px;
             height: 25px;
@@ -76,6 +99,7 @@
 </head>
 
 <body>
+    <button class="toggle" onclick="toggleDarkMode()">🌙 ダークモード切替</button>
     <button id="toggleBtn" onclick="toggleImportSection()">🔽 インポート欄を非表示</button>
     <div id="importSection">
         <h3>📥 インポートテキストエリア（ここから展開）</h3>
@@ -117,8 +141,14 @@
         <ul id="customList"></ul>
         <div id="selectionBox"></div>
     </form>
-
     <script>
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            document.body.textarea.classList.toggle('dark-mode');
+            document.body.textbox.classList.toggle('dark-mode');
+            document.body.button.classList.toggle('dark-mode');            
+        }
+
         window.addEventListener('wheel', function (e) {
             if (e.ctrlKey) {
                 // 拡大縮小のデフォルト動作を防ぐ
@@ -527,13 +557,13 @@
             for (let i = 0; i < blocks.length; i++) {
                 const regex_result = blocks[i].match(/^\*\*\s*(.*)/);
                 if (regex_result !== null) {
-                    textboxes[i+1].value = regex_result[1];
+                    textboxes[i + 1].value = regex_result[1];
                     if (regex_result[1] == "") {
-                        textboxes[i+1].value = "blank"
+                        textboxes[i + 1].value = "blank"
                     }
                 } else {
                     if (textboxes[i].value === "") {
-                        textboxes[i].value = textboxes[i-1].value;
+                        textboxes[i].value = textboxes[i - 1].value;
                     }
                     textareas[i].value = blocks[i];
                     textareas[i].style.height = "auto"; // 一旦リセット
@@ -544,7 +574,7 @@
                 //     textareas[i].remove();
                 // }
             }
-        }        
+        }
 
         function toggleImportSection() {
             const section = document.getElementById('importSection');
