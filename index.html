@@ -685,6 +685,11 @@
                 outlineMap.get(title).push(content);
             });
 
+            // '未整理'を最後に移動
+            const value = outlineMap.get('未整理'); // 値を取得
+            outlineMap.delete('未整理');            // 一度削除
+            outlineMap.set('未整理', value);        // 再度追加（→ 末尾に来る）　
+
             let orgText = '';
 
             for (const [title, contents] of outlineMap.entries()) {
