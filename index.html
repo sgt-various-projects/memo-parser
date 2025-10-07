@@ -58,7 +58,7 @@
             max-height: 200px;
             overflow-y: auto;
             position: absolute;
-            background-color: white;
+            background-color: black;
             width: 200px;
             margin: 0;
             z-index: 1000;
@@ -70,7 +70,7 @@
         }
 
         #customList li.active {
-            background-color: #b3d4fc;
+            background-color: #324a3c;
         }
 
         #selectionBox {
@@ -270,8 +270,6 @@
             filtered.forEach(item => {
                 const li = document.createElement("li");
                 li.textContent = item;
-                li.style.backgroundColor = 'black';
-                li.style.color = 'white'; // 文字が見えるように
                 li.addEventListener("mousedown", () => {
                     input.value = item;
                     lastCommittedValue = item;
