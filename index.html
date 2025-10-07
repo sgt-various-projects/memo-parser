@@ -270,6 +270,8 @@
             filtered.forEach(item => {
                 const li = document.createElement("li");
                 li.textContent = item;
+                li.style.backgroundColor = 'black';
+                li.style.color = 'white'; // 文字が見えるように
                 li.addEventListener("mousedown", () => {
                     input.value = item;
                     lastCommittedValue = item;
@@ -591,10 +593,10 @@
 
             if (section.style.display === 'none') {
                 section.style.display = 'block';
-                btn.textContent = '🔽 インポート欄を非表示';
+                btn.textContent = '🔽 hide import text area';
             } else {
                 section.style.display = 'none';
-                btn.textContent = '🔼 インポート欄を表示';
+                btn.textContent = '🔼 show import text area';
             }
         }
 
