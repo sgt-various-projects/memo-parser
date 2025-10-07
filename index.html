@@ -110,23 +110,27 @@
 </head>
 
 <body>
-    <button class="toggle" onclick="toggleDarkMode()">🌙 ダークモード切替</button>
-    <button id="toggleBtn" onclick="toggleImportSection()">🔽 インポート欄を非表示</button>
+    how to use : TBD
+    <br>
+    <button class="toggle" onclick="toggleDarkMode()">🌙 switch dark mode</button>
+    <button id="toggleBtn" onclick="toggleImportSection()">🔽 hide import text area</button>
     <div id="importSection">
-        <h3>📥 インポートテキストエリア（ここから展開）</h3>
+        <h3>📥 import text area</h3>
         <textarea id="importBox" placeholder="空行で区切られたテキストブロックをここに貼り付けてください"></textarea>
-        <br>
+        <br><br>
         expand by
         <button onclick="expandToTextareas()">▶ row text</button>
         <button onclick="expandToTextareasByOrg()">▶ org text(only lv2)</button>
     </div>
     <hr>
+    <br>
+    <h3>📥 export text area</h3>    
+    <textarea id="orgExportArea" style="width: 800px; height: 400px;" placeholder="org-mode形式の出力がここに表示されます"></textarea>
+    <br><br>
     <button onclick="sortByTextbox()">sort</button>
-    <hr>
     export to
     <button onclick="outputToTextarea()">📤 text area</button><button onclick="exportToOrg()">📄org file </button>
-    <br><br>
-    <textarea id="orgExportArea" style="width: 800px; height: 400px;" placeholder="org-mode形式の出力がここに表示されます"></textarea>
+    <hr><br>
     <form autocomplete="off">
         <div id="container">
             <div class="input-row">
