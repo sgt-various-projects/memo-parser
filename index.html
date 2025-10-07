@@ -116,14 +116,15 @@
         <h3>📥 インポートテキストエリア（ここから展開）</h3>
         <textarea id="importBox" placeholder="空行で区切られたテキストブロックをここに貼り付けてください"></textarea>
         <br>
-        <button onclick="expandToTextareas()">▶ テキストエリアに展開</button>
-        <button onclick="expandToTextareasByOrg()">▶ Orgファイルとしてテキストエリアに展開(2レベルのみ対応)</button>
+        expand by
+        <button onclick="expandToTextareas()">▶ row text</button>
+        <button onclick="expandToTextareasByOrg()">▶ org text(only lv2)</button>
     </div>
-
-    <button onclick="sortByTextbox()">テキストボックスの値でソート</button>
-    <button onclick="exportToOrg()">org-modeにエクスポート</button>
-    <br><br>
-    <button onclick="outputToTextarea()">📤 テキストエリアにも出力</button>
+    <hr>
+    <button onclick="sortByTextbox()">sort</button>
+    <hr>
+    export to
+    <button onclick="outputToTextarea()">📤 text area</button><button onclick="exportToOrg()">📄org file </button>
     <br><br>
     <textarea id="orgExportArea" style="width: 800px; height: 400px;" placeholder="org-mode形式の出力がここに表示されます"></textarea>
     <form autocomplete="off">
