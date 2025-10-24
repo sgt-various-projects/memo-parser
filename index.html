@@ -21,19 +21,7 @@
             color: #eee;
         }
 
-        .dark-mode textarea {
-            background-color: #222;
-            color: #eee;
-            border-color: #555;
-        }
-
-        .dark-mode input {
-            background-color: #222;
-            color: #eee;
-            border-color: #555;
-        }
-
-        .dark-mode button {
+        .dark-mode :is(textarea, input, button) {
             background-color: #222;
             color: #eee;
             border-color: #555;
@@ -706,9 +694,6 @@
 
         function toggleDarkMode() {
             document.body.classList.toggle('dark-mode');
-            document.body.textarea.classList.toggle('dark-mode');
-            document.body.textbox.classList.toggle('dark-mode');
-            document.body.button.classList.toggle('dark-mode');
         }
         toggleDarkMode();
     </script>
