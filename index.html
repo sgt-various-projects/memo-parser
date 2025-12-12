@@ -432,9 +432,13 @@
                 outlineMap.get(title).push(content);
             });
 
+            const sortedMap = new Map(
+              [...outlineMap].sort((a, b) => a[0].localeCompare(b[0]))
+            );          
+
             let orgText = '';
 
-            for (const [title, contents] of outlineMap.entries()) {
+            for (const [title, contents] of sortedMap.entries()) {
                 // 本文が空のアウトラインは出力しない
                 if (contents.length === 0) continue;
 
@@ -673,15 +677,19 @@
                 outlineMap.get(title).push(content);
             });
 
+            const sortedMap = new Map(
+              [...outlineMap].sort((a, b) => a[0].localeCompare(b[0]))
+            );
+
             // '未整理'を最後に移動
-            const value = outlineMap.get('未整理'); // 値を取得
-            outlineMap.delete('未整理');            // 一度削除
-            outlineMap.set('未整理', value);        // 再度追加（→ 末尾に来る）　
+            const value = sortedMap.get('未整理'); // 値を取得
+            sortedMap.delete('未整理');            // 一度削除
+            sortedMap.set('未整理', value);        // 再度追加（→ 末尾に来る）　
 
             let orgText = '';
 
-            for (const [title, contents] of outlineMap.entries()) {
-                if (contents.length === 0) continue;
+            for (const [title, contents] of sortedMap.entries()) {
+                if (contents == null || contents.length === 0) continue;
 
                 orgText += `** ${title}\n\n`;
                 contents.forEach(text => {
