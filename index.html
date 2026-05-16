@@ -29,7 +29,6 @@
 
         .textbox {
             width: 200px;
-            height: 25px;
             margin: 10px;
             display: block;
         }
@@ -98,7 +97,7 @@
 </head>
 
 <body class="dark-mode">
-    how to use : TBD
+    how to use : TBD3
     <br>
     <button class="toggle" onclick="toggleDarkMode()">🌙 switch dark mode</button>
     <button id="toggleBtn" onclick="toggleImportSection()">🔽 hide import text area</button>
@@ -464,14 +463,58 @@
             a.click();
         }
 
+        /**
+         * import テキストをブロックに分割する（従来どおり「空行1行＝実質 \n\n」で区切る）。
+         * ただし ``` で始まる行から次の ``` で始まる行までの間はフェンス内とみなし、
+         * その中の空行ではブロック分割しない。
+         */
+        function splitImportIntoBlocks(raw) {
+            // textarea は環境により CRLF のことがあり、split('\n') だけだと「空行」が '\r' になり
+            // line === '' と一致せず、フェンス検知やブロック分割が壊れる
+            const normalized = String(raw)
+                .replace(/^\uFEFF/, '')
+                .replace(/\r\n/g, '\n')
+                .replace(/\r/g, '\n');
+
+            const lines = normalized.split('\n');
+            const blocks = [];
+            let current = [];
+            let inFence = false;
+
+            for (let idx = 0; idx < lines.length; idx++) {
+                const line = lines[idx];
+                const isFenceLine = /^\s*```/.test(line);
+
+                if (isFenceLine) {
+                    current.push(line);
+                    inFence = !inFence;
+                    continue;
+                }
+
+                if (!inFence && line === '') {
+                    if (current.length > 0) {
+                        const trimmedBlock = current.join('\n').trim();
+                        if (trimmedBlock !== '') blocks.push(trimmedBlock);
+                        current = [];
+                    }
+                    while (idx + 1 < lines.length && lines[idx + 1] === '') {
+                        idx++;
+                    }
+                    continue;
+                }
+
+                current.push(line);
+            }
+
+            const trimmedBlock = current.join('\n').trim();
+            if (trimmedBlock !== '') blocks.push(trimmedBlock);
+            return blocks;
+        }
+
         function expandToTextareas() {
             const raw = document.getElementById('importBox').value;
 
-            // 2行以上の空行で区切る
-            const blocks = raw
-                .split(/\n{2,}/)
-                .map(b => b.trim())
-                .filter(b => b !== '');
+            const blocks = splitImportIntoBlocks(raw);
 
             const container = document.getElementById('container');
             let textareas = container.querySelectorAll('.textarea');
@@ -518,11 +561,7 @@
         function expandToTextareasByOrg() {
             const raw = document.getElementById('importBox').value;
 
-            // 2行以上の空行で区切る
-            const blocks = raw
-                .split(/\n{2,}/)
-                .map(b => b.trim())
-                .filter(b => b !== '');
+            const blocks = splitImportIntoBlocks(raw);
 
             const container = document.getElementById('container');
             let textareas = container.querySelectorAll('.textarea');
