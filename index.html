@@ -566,7 +566,9 @@
             const container = document.getElementById('container');
             let textareas = container.querySelectorAll('.textarea');
             const existingCount = textareas.length;
-            const neededCount = blocks.length;
+            /** `** xxx` は専用の行ではなく、続く本文行の見出しとして使うので行数カウントに含めない */
+            const paragraphBlockCount = blocks.filter(b => !/^\*\*\s/.test(b)).length;
+            const neededCount = Math.max(paragraphBlockCount, 1);
 
             // 不足している分だけテキストボックス＋テキストエリアを追加
             if (neededCount > existingCount) {
@@ -597,26 +599,24 @@
             textareas = container.querySelectorAll('.textarea');
             textboxes = container.querySelectorAll('.textbox');
 
-            // ブロックを順番にテキストエリアに入力
+            // **`** xxx` のブロックは見出しだけを確定させ、単独では行を消費しない。続く本文は同じ見出しのまま順に各行へ入力する。
+            let heading = '';
+            let bodyRow = 0;
             for (let i = 0; i < blocks.length; i++) {
                 const regex_result = blocks[i].match(/^\*\*\s*(.*)/);
                 if (regex_result !== null) {
-                    textboxes[i + 1].value = regex_result[1];
-                    if (regex_result[1] == "") {
-                        textboxes[i + 1].value = "blank"
-                    }
-                } else {
-                    if (textboxes[i].value === "") {
-                        textboxes[i].value = textboxes[i - 1].value;
-                    }
-                    textareas[i].value = blocks[i];
-                    textareas[i].style.height = "auto"; // 一旦リセット
-                    textareas[i].style.height = textareas[i].scrollHeight + "px"; // 内容に応じて再設定
+                    heading = regex_result[1] === '' ? 'blank' : regex_result[1];
+                    continue;
                 }
-                // if (textboxes[i].value === "" && textareas[i].value == "")  {
-                //     textboxes[i].remove();
-                //     textareas[i].remove();
-                // }
+                let title = heading;
+                if (title === '' && bodyRow > 0) {
+                    title = textboxes[bodyRow - 1].value;
+                }
+                textboxes[bodyRow].value = title;
+                textareas[bodyRow].value = blocks[i];
+                textareas[bodyRow].style.height = "auto";
+                textareas[bodyRow].style.height = textareas[bodyRow].scrollHeight + "px";
+                bodyRow++;
             }
         }
 
