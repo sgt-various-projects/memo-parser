@@ -100,6 +100,7 @@
     how to use : TBD3
     <br>
     <button class="toggle" onclick="toggleDarkMode()">🌙 switch dark mode</button>
+    <button type="button" onclick="reloadPage()">reload</button>
     <button id="toggleBtn" onclick="toggleImportSection()">🔽 hide import text area</button>
     <div id="importSection">
         <h3>📥 import text area</h3>
@@ -145,6 +146,17 @@
         <div id="selectionBox"></div>
     </form>
     <script>
+        document.addEventListener('keydown', function (e) {
+            const key = e.key.toLowerCase();
+            if ((e.ctrlKey || e.metaKey) && key === 'r') {
+                e.preventDefault();
+            }
+        });
+
+        function reloadPage() {
+            window.location.reload();
+        }
+
         window.addEventListener('wheel', function (e) {
             if (e.ctrlKey) {
                 // 拡大縮小のデフォルト動作を防ぐ
