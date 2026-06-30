@@ -444,12 +444,9 @@
             });
 
             
-            // 20251215 バグってそうなので一旦コメントアウト。
-            // const sortedMap = new Map(
-            //  [...outlineMap].sort((a, b) => a[0].localeCompare(b[0]))
-            // );          
-
-            const sortedMap = outlineMap;
+            const sortedMap = new Map(
+                [...outlineMap].sort((a, b) => a[0].localeCompare(b[0]))
+            );
 
             let orgText = '';
 
@@ -762,12 +759,9 @@
                 outlineMap.get(title).push(content);
             });
 
-            // 20251215 なんだかバグってそうなので一旦コメントアウト
-            // const sortedMap = new Map(
-            //   [...outlineMap].sort((a, b) => a[0].localeCompare(b[0]))
-            // );
-
-            const sortedMap = outlineMap;
+            const sortedMap = new Map(
+                [...outlineMap].sort((a, b) => a[0].localeCompare(b[0]))
+            );
 
             // '未整理'を最後に移動
             const value = sortedMap.get('未整理'); // 値を取得
