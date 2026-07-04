@@ -9,11 +9,8 @@
         code {
             font-family: "Fira Code", "JetBrains Mono", "Source Code Pro", Inconsolata, Menlo, Consolas, monospace;
             font-size: 0.9rem;
-            /* 適宜調整 */
             line-height: 1.4;
-            /* 見やすさのため少し余裕を持たせる */
             white-space: pre;
-            /* 改行・空白を忠実に表現 */
         }
 
         .dark-mode {
@@ -25,12 +22,6 @@
             background-color: #222;
             color: #eee;
             border-color: #555;
-        }
-
-        .textbox {
-            width: 200px;
-            margin: 10px;
-            display: block;
         }
 
         .selected {
@@ -69,19 +60,19 @@
             z-index: 999;
         }
 
-
         .input-row {
             display: flex;
             align-items: flex-start;
-            /* ← これで上ぞろえ */
             margin-bottom: 5px;
         }
 
         .textbox {
             width: 400px;
             height: 25px;
+            margin-top: 0;
             margin-right: 10px;
-            margin-top: 0px;
+            margin-bottom: 10px;
+            margin-left: 10px;
         }
 
         .textarea {
@@ -112,7 +103,7 @@
     </div>
     <hr>
     <br>
-    <h3>📥 export text area</h3>    
+    <h3>📥 export text area</h3>
     <textarea id="orgExportArea" style="width: 800px; height: 400px;" placeholder="org-mode形式の出力がここに表示されます"></textarea>
     <br><br>
     <button onclick="sortByTextbox()">sort</button>
@@ -147,8 +138,7 @@
     </form>
     <script>
         document.addEventListener('keydown', function (e) {
-            const key = e.key.toLowerCase();
-            if ((e.ctrlKey || e.metaKey) && key === 'r') {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r') {
                 e.preventDefault();
             }
         });
@@ -159,96 +149,82 @@
 
         window.addEventListener('wheel', function (e) {
             if (e.ctrlKey) {
-                // 拡大縮小のデフォルト動作を防ぐ
                 e.preventDefault();
-
-                // スクロールを強制的に行う
-                window.scrollBy({
-                    top: e.deltaY,
-                    left: e.deltaX,
-                    behavior: 'auto'
-                });
+                window.scrollBy({ top: e.deltaY, left: e.deltaX, behavior: 'auto' });
             }
-        }, { passive: false }); // ← e.preventDefault() を有効にするには必要
+        }, { passive: false });
 
-        // テキストボックス → テキストエリア 右矢印
-        document.querySelectorAll('.input-row .textbox').forEach(textbox => {
-            textbox.addEventListener('keydown', function (event) {
-                if (event.key === 'ArrowRight') {
-                    const isAtEnd = this.selectionStart === this.selectionEnd && this.selectionEnd === this.value.length;
-                    if (isAtEnd) {
-                        const textarea = this.closest('.input-row').querySelector('.textarea');
-                        if (textarea) {
-                            event.preventDefault();
-                            textarea.focus();
-                        }
-                    }
+        const container = document.getElementById('container');
+
+        // キーボードナビゲーション (event delegation で動的追加行にも対応)
+        container.addEventListener('keydown', function (e) {
+            const target = e.target;
+
+            if (e.key === 'ArrowRight' && target.classList.contains('textbox')) {
+                const isAtEnd = target.selectionStart === target.selectionEnd && target.selectionEnd === target.value.length;
+                if (isAtEnd) {
+                    const ta = target.closest('.input-row').querySelector('.textarea');
+                    if (ta) { e.preventDefault(); ta.focus(); }
                 }
-            });
-        });
+                return;
+            }
 
-        // テキストエリア → テキストボックス 左矢印
-        document.querySelectorAll('.input-row .textarea').forEach(textarea => {
-            textarea.addEventListener('keydown', function (event) {
-                if (event.key === 'ArrowLeft') {
-                    const isAtStart = this.selectionStart === this.selectionEnd && this.selectionStart === 0;
-                    if (isAtStart) {
-                        const textbox = this.closest('.input-row').querySelector('.textbox');
-                        if (textbox) {
-                            event.preventDefault();
-                            textbox.focus();
-                            // 末尾にカーソルを移動
-                            const length = textbox.value.length;
-                            textbox.setSelectionRange(length, length);
-                        }
-                    }
-                }
-            });
-        });
+            if (!target.classList.contains('textarea')) return;
 
-        const textareas = document.querySelectorAll("textarea");
-
-        textareas.forEach((textarea, index) => {
-            textarea.addEventListener("keydown", (e) => {
-                const cursorPos = textarea.selectionStart;
-                const textUntilCursor = textarea.value.slice(0, cursorPos);
-                const currentLine = textUntilCursor.split("\n").length;
-                const totalLines = textarea.value.split("\n").length;
-
-                if (e.key === "ArrowDown") {
-                    if (currentLine === totalLines && index < textareas.length - 1) {
+            if (e.key === 'ArrowLeft') {
+                const isAtStart = target.selectionStart === 0 && target.selectionEnd === 0;
+                if (isAtStart) {
+                    const tb = target.closest('.input-row').querySelector('.textbox');
+                    if (tb) {
                         e.preventDefault();
-                        textareas[index + 1].focus();
+                        tb.focus();
+                        tb.setSelectionRange(tb.value.length, tb.value.length);
                     }
                 }
+                return;
+            }
 
-                if (e.key === "ArrowUp") {
-                    if (currentLine === 1 && index > 0) {
-                        e.preventDefault();
-                        textareas[index - 1].focus();
-                    }
+            const allTas = Array.from(container.querySelectorAll('.textarea'));
+            const idx = allTas.indexOf(target);
+            const lineNum = target.value.slice(0, target.selectionStart).split('\n').length;
+
+            if (e.key === 'ArrowDown') {
+                if (lineNum === target.value.split('\n').length && idx < allTas.length - 1) {
+                    e.preventDefault();
+                    allTas[idx + 1].focus();
                 }
-            });
+            } else if (e.key === 'ArrowUp') {
+                if (lineNum === 1 && idx > 0) {
+                    e.preventDefault();
+                    allTas[idx - 1].focus();
+                }
+            }
         });
 
-        const list = document.getElementById("customList");
-        const selectionBox = document.getElementById("selectionBox");
-        const items = ["りんご", "ぶどあ", "ぶどう", "ぶどうジュース", "パイナップル"];
+        const list = document.getElementById('customList');
+        const selectionBox = document.getElementById('selectionBox');
+        const items = ['りんご', 'ぶどあ', 'ぶどう', 'ぶどうジュース', 'パイナップル'];
         let activeIndex = -1;
         let currentInput = null;
-        let lastCommittedValue = "";
+        let lastCommittedValue = '';
         let isSelecting = false;
         let isCtrlPressed = false;
+        let cachedTextboxes = null;
         let startX, startY;
+
+        window.addEventListener('blur', () => { isCtrlPressed = false; });
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) isCtrlPressed = false;
+        });
 
         function showList(input) {
             currentInput = input;
             const val = input.value.toLowerCase();
-            list.innerHTML = "";
+            list.innerHTML = '';
             activeIndex = -1;
 
             if (!val) {
-                list.style.display = "none";
+                list.style.display = 'none';
                 return;
             }
 
@@ -257,83 +233,68 @@
             list.style.left = `${window.scrollX + rect.left}px`;
             list.style.width = `${rect.width}px`;
 
-            const filtered = items.filter(item =>
-                item.includes(val) && item.toLowerCase() !== val
-            );
+            const filtered = items.filter(item => item.includes(val) && item.toLowerCase() !== val);
 
             if (filtered.length === 0) {
-                list.style.display = "none";
+                list.style.display = 'none';
                 return;
             }
 
             filtered.forEach(item => {
-                const li = document.createElement("li");
+                const li = document.createElement('li');
                 li.textContent = item;
-                li.addEventListener("mousedown", () => {
+                li.addEventListener('mousedown', () => {
                     input.value = item;
                     lastCommittedValue = item;
-                    list.style.display = "none";
+                    list.style.display = 'none';
                 });
                 list.appendChild(li);
             });
 
-            list.style.display = "block";
+            list.style.display = 'block';
         }
 
         function updateActiveOption(options) {
             options.forEach((li, idx) => {
-                li.classList.toggle("active", idx === activeIndex);
-                if (idx === activeIndex) {
-                    li.scrollIntoView({ block: "nearest" });
-                }
+                li.classList.toggle('active', idx === activeIndex);
+                if (idx === activeIndex) li.scrollIntoView({ block: 'nearest' });
             });
         }
 
-
-        document.addEventListener("click", (e) => {
-            if (
-                currentInput &&
-                e.target !== currentInput &&
-                !list.contains(e.target)
-            ) {
-                list.style.display = "none";
+        document.addEventListener('click', (e) => {
+            if (currentInput && e.target !== currentInput && !list.contains(e.target)) {
+                list.style.display = 'none';
                 activeIndex = -1;
             }
         });
 
-        // 選択機能
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Control') isCtrlPressed = true;
         });
 
         document.addEventListener('keyup', (e) => {
-            if (e.key === 'Control') {
-                isCtrlPressed = false;
-                const selectedBoxes = Array.from(document.querySelectorAll('.textbox.selected'));
-                if (selectedBoxes.length > 1) {
-                    const value = prompt("入力する値を指定してください：");
-                    if (value !== null) {
-                        selectedBoxes.forEach(el => {
-                            el.value = value;
-                            el.blur();
-                            el.classList.remove('selected');
-                        });
+            if (e.key !== 'Control') return;
+            isCtrlPressed = false;
+            const selectedBoxes = Array.from(document.querySelectorAll('.textbox.selected'));
+            if (selectedBoxes.length <= 1) return;
 
-                        const allBoxes = Array.from(document.querySelectorAll('.textbox'));
-                        const lastSelected = selectedBoxes[selectedBoxes.length - 1];
-                        const lastIndex = allBoxes.indexOf(lastSelected);
-                        if (lastIndex >= 0 && lastIndex + 1 < allBoxes.length) {
-                            allBoxes[lastIndex + 1].focus();
-                        }
-                    } else {
-                        selectedBoxes.forEach(el => {
-                            el.blur();
-                            el.classList.remove('selected');
-                        });
-                    }
+            const value = prompt('入力する値を指定してください：');
+            selectedBoxes.forEach(el => {
+                if (value !== null) el.value = value;
+                el.blur();
+                el.classList.remove('selected');
+            });
+
+            if (value !== null) {
+                const allBoxes = Array.from(document.querySelectorAll('.textbox'));
+                const lastIndex = allBoxes.indexOf(selectedBoxes[selectedBoxes.length - 1]);
+                if (lastIndex >= 0 && lastIndex + 1 < allBoxes.length) {
+                    allBoxes[lastIndex + 1].focus();
                 }
             }
         });
+
+        const INTERACTIVE_TAGS = new Set(['INPUT', 'TEXTAREA', 'BUTTON', 'SELECT', 'A', 'LABEL']);
 
         document.addEventListener('mousedown', (e) => {
             if (e.target.classList.contains('textbox') && isCtrlPressed) {
@@ -341,10 +302,11 @@
                 return;
             }
 
-            if (e.target.tagName !== 'INPUT') {
+            if (!INTERACTIVE_TAGS.has(e.target.tagName)) {
                 isSelecting = true;
                 startX = e.pageX;
                 startY = e.pageY;
+                cachedTextboxes = Array.from(document.querySelectorAll('.textbox'));
 
                 selectionBox.style.left = startX + 'px';
                 selectionBox.style.top = startY + 'px';
@@ -352,7 +314,7 @@
                 selectionBox.style.height = '0px';
                 selectionBox.style.display = 'block';
 
-                document.querySelectorAll('.textbox').forEach(el => el.classList.remove('selected'));
+                cachedTextboxes.forEach(el => el.classList.remove('selected'));
             }
         });
 
@@ -370,12 +332,10 @@
             selectionBox.style.height = h + 'px';
 
             const boxRect = selectionBox.getBoundingClientRect();
-            document.querySelectorAll('.textbox').forEach(el => {
+            cachedTextboxes.forEach(el => {
                 const rect = el.getBoundingClientRect();
-                const overlap = !(rect.right < boxRect.left ||
-                    rect.left > boxRect.right ||
-                    rect.bottom < boxRect.top ||
-                    rect.top > boxRect.bottom);
+                const overlap = !(rect.right < boxRect.left || rect.left > boxRect.right ||
+                    rect.bottom < boxRect.top || rect.top > boxRect.bottom);
                 el.classList.toggle('selected', overlap);
             });
         });
@@ -383,105 +343,76 @@
         document.addEventListener('mouseup', () => {
             if (!isSelecting) return;
             isSelecting = false;
+            cachedTextboxes = null;
             selectionBox.style.display = 'none';
 
             const selectedBoxes = Array.from(document.querySelectorAll('.textbox.selected'));
-            if (selectedBoxes.length > 1) {
-                const value = prompt("入力する値を指定してください：");
-                if (value !== null) {
-                    selectedBoxes.forEach(el => {
-                        el.value = value;
-                        el.blur();
-                        el.classList.remove('selected');
-                    });
+            if (selectedBoxes.length <= 1) return;
 
-                    const allBoxes = Array.from(document.querySelectorAll('.textbox'));
-                    const lastSelected = selectedBoxes[selectedBoxes.length - 1];
-                    const lastIndex = allBoxes.indexOf(lastSelected);
-                    if (lastIndex >= 0 && lastIndex + 1 < allBoxes.length) {
-                        allBoxes[lastIndex + 1].focus();
-                    }
-                } else {
-                    selectedBoxes.forEach(el => {
-                        el.blur();
-                        el.classList.remove('selected');
-                    });
+            const value = prompt('入力する値を指定してください：');
+            selectedBoxes.forEach(el => {
+                if (value !== null) el.value = value;
+                el.blur();
+                el.classList.remove('selected');
+            });
+
+            if (value !== null) {
+                const allBoxes = Array.from(document.querySelectorAll('.textbox'));
+                const lastIndex = allBoxes.indexOf(selectedBoxes[selectedBoxes.length - 1]);
+                if (lastIndex >= 0 && lastIndex + 1 < allBoxes.length) {
+                    allBoxes[lastIndex + 1].focus();
                 }
             }
         });
 
-        function sortByTextbox() {
-            const container = document.getElementById("container");
-            const rows = Array.from(container.getElementsByClassName("input-row"));
-
-            // 値を取得してソート
-            rows.sort((a, b) => {
-                const aValue = a.querySelector(".textbox").value;
-                const bValue = b.querySelector(".textbox").value;
-                return aValue.localeCompare(bValue, 'ja');
+        function buildOutlineMap(rows) {
+            const outlineMap = new Map();
+            rows.forEach(row => {
+                const title = row.querySelector('.textbox').value.trim() || '未整理';
+                const content = row.querySelector('.textarea').value.trim();
+                if (content === '') return;
+                if (!outlineMap.has(title)) outlineMap.set(title, []);
+                outlineMap.get(title).push(content);
             });
+            return outlineMap;
+        }
 
-            // 一旦中身をクリアしてソートされた順に再挿入
-            container.innerHTML = "";
+        function sortByTextbox() {
+            const rows = Array.from(container.getElementsByClassName('input-row'));
+            rows.sort((a, b) => {
+                const aVal = a.querySelector('.textbox').value;
+                const bVal = b.querySelector('.textbox').value;
+                return aVal.localeCompare(bVal, 'ja');
+            });
+            container.innerHTML = '';
             rows.forEach(row => container.appendChild(row));
         }
 
         function exportToOrg() {
-            const rows = document.querySelectorAll('.input-row');
-            const outlineMap = new Map();
-
-            rows.forEach(row => {
-                const title = row.querySelector('.textbox').value.trim() || '未整理';
-                const content = row.querySelector('.textarea').value.trim();
-
-                // テキストエリアが空ならスキップ
-                if (content === '') return;
-
-                if (!outlineMap.has(title)) {
-                    outlineMap.set(title, []);
-                }
-                outlineMap.get(title).push(content);
-            });
-
-            
-            const sortedMap = new Map(
-                [...outlineMap].sort((a, b) => a[0].localeCompare(b[0]))
-            );
-
-            let orgText = '';
-
-            for (const [title, contents] of sortedMap.entries()) {
-                // 本文が空のアウトラインは出力しない
-                if (contents.length === 0) continue;
-
-                orgText += `** ${title}\n\n`;
-                contents.forEach(text => {
-                    orgText += `${text}\n\n\n`;
-                });
-            }
-
-            if (orgText === '') {
-                alert("出力する内容がありません。");
+            const outlineMap = buildOutlineMap(document.querySelectorAll('.input-row'));
+            if (outlineMap.size === 0) {
+                alert('出力する内容がありません。');
                 return;
             }
 
-            const blob = new Blob([orgText], { type: 'text/plain' });
+            const sortedMap = new Map([...outlineMap].sort((a, b) => a[0].localeCompare(b[0])));
+            let orgText = '';
+            for (const [title, contents] of sortedMap) {
+                orgText += `** ${title}\n\n`;
+                contents.forEach(text => { orgText += `${text}\n\n\n`; });
+            }
+
+            const url = URL.createObjectURL(new Blob([orgText], { type: 'text/plain' }));
             const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
+            a.href = url;
             a.download = 'export.org';
             a.click();
+            setTimeout(() => URL.revokeObjectURL(url), 0);
         }
 
-        /**
-         * import テキストをブロックに分割する（従来どおり「空行1行＝実質 \n\n」で区切る）。
-         * ただし ``` で始まる行から次の ``` で始まる行までの間はフェンス内とみなし、
-         * その中の空行ではブロック分割しない。
-         */
         function splitImportIntoBlocks(raw) {
-            // textarea は環境により CRLF のことがあり、split('\n') だけだと「空行」が '\r' になり
-            // line === '' と一致せず、フェンス検知やブロック分割が壊れる
             const normalized = String(raw)
-                .replace(/^\uFEFF/, '')
+                .replace(/^﻿/, '')
                 .replace(/\r\n/g, '\n')
                 .replace(/\r/g, '\n');
 
@@ -492,9 +423,8 @@
 
             for (let idx = 0; idx < lines.length; idx++) {
                 const line = lines[idx];
-                const isFenceLine = /^\s*```/.test(line);
 
-                if (isFenceLine) {
+                if (/^\s*```/.test(line)) {
                     current.push(line);
                     inFence = !inFence;
                     continue;
@@ -506,9 +436,7 @@
                         if (trimmedBlock !== '') blocks.push(trimmedBlock);
                         current = [];
                     }
-                    while (idx + 1 < lines.length && lines[idx + 1] === '') {
-                        idx++;
-                    }
+                    while (idx + 1 < lines.length && lines[idx + 1] === '') idx++;
                     continue;
                 }
 
@@ -520,52 +448,42 @@
             return blocks;
         }
 
-        function expandToTextareas() {
-            const raw = document.getElementById('importBox').value;
+        function createInputRow() {
+            const row = document.createElement('div');
+            row.className = 'input-row';
 
-            const blocks = splitImportIntoBlocks(raw);
+            const input = document.createElement('input');
+            input.type = 'search';
+            input.className = 'textbox';
+            input.tabIndex = container.querySelectorAll('.textbox').length + 1;
+            input.autocomplete = 'off';
+            setupAutocomplete(input);
 
-            const container = document.getElementById('container');
-            let textareas = container.querySelectorAll('.textarea');
-            const existingCount = textareas.length;
-            const neededCount = blocks.length;
+            const textarea = document.createElement('textarea');
+            textarea.className = 'textarea';
 
-            // 不足している分だけテキストボックス＋テキストエリアを追加
-            if (neededCount > existingCount) {
-                for (let i = 0; i < neededCount - existingCount; i++) {
-                    const row = document.createElement('div');
-                    row.className = 'input-row';
+            row.appendChild(input);
+            row.appendChild(textarea);
+            return row;
+        }
 
-                    const input = document.createElement('input');
-                    input.type = 'text';
-                    input.className = 'textbox';
-                    input.tabIndex = 6 + i;
-                    input.type = "search";
-                    input.autocomplete = "off";
-
-                    // ✅ ここで追加した input に対して補完を設定！
-                    setupAutocomplete(input);  // ← これをこの中に置く！                    
-
-                    const textarea = document.createElement('textarea');
-                    textarea.className = 'textarea';
-
-                    row.appendChild(input);
-                    row.appendChild(textarea);
-                    container.appendChild(row);
-                }
-            }
-
-            // すべてのテキストエリアを取得しなおす（追加された分も含めて）
-            textareas = container.querySelectorAll('.textarea');
-
-            // ブロックを順番にテキストエリアに入力
-            for (let i = 0; i < blocks.length; i++) {
-                textareas[i].value = blocks[i];
-                textareas[i].style.height = "auto"; // 一旦リセット
-                textareas[i].style.height = textareas[i].scrollHeight + "px"; // 内容に応じて再設定
+        function ensureRowCount(n) {
+            const existing = container.querySelectorAll('.textarea').length;
+            for (let i = existing; i < n; i++) {
+                container.appendChild(createInputRow());
             }
         }
 
+        function expandToTextareas() {
+            const blocks = splitImportIntoBlocks(document.getElementById('importBox').value);
+            ensureRowCount(blocks.length);
+            const textareas = container.querySelectorAll('.textarea');
+            for (let i = 0; i < blocks.length; i++) {
+                textareas[i].value = blocks[i];
+                textareas[i].style.height = 'auto';
+                textareas[i].style.height = textareas[i].scrollHeight + 'px';
+            }
+        }
 
         const OUTLINE_LV2_RE = /^\*\* /;
 
@@ -578,83 +496,31 @@
             return title === '' ? 'blank' : title;
         }
 
-        /** org text 展開に必要な入力行数（outline_lv2 は行を増やさない） */
         function countRowsForOrgExpand(blocks) {
-            let n = 0;
-            for (const b of blocks) {
-                if (isOutlineLv2(b)) continue;
-                n++;
-            }
-            return n;
+            return blocks.filter(b => !isOutlineLv2(b)).length;
         }
 
         function expandToTextareasByOrg() {
-            const raw = document.getElementById('importBox').value;
+            const blocks = splitImportIntoBlocks(document.getElementById('importBox').value);
+            ensureRowCount(Math.max(countRowsForOrgExpand(blocks), 1));
 
-            const blocks = splitImportIntoBlocks(raw);
-
-            const container = document.getElementById('container');
-            let textareas = container.querySelectorAll('.textarea');
-            const existingCount = textareas.length;
-            const neededCount = Math.max(countRowsForOrgExpand(blocks), 1);
-
-            // 不足している分だけテキストボックス＋テキストエリアを追加
-            if (neededCount > existingCount) {
-                for (let i = 0; i < neededCount - existingCount; i++) {
-                    const row = document.createElement('div');
-                    row.className = 'input-row';
-
-                    const input = document.createElement('input');
-                    input.type = 'text';
-                    input.className = 'textbox';
-                    input.tabIndex = 6 + i;
-                    input.type = "search";
-                    input.autocomplete = "off";
-
-                    // ✅ ここで追加した input に対して補完を設定！
-                    setupAutocomplete(input);  // ← これをこの中に置く！                    
-
-                    const textarea = document.createElement('textarea');
-                    textarea.className = 'textarea';
-
-                    row.appendChild(input);
-                    row.appendChild(textarea);
-                    container.appendChild(row);
-                }
-            }
-
-            // すべてのテキストエリアを取得しなおす（追加された分も含めて）
-            textareas = container.querySelectorAll('.textarea');
-            textboxes = container.querySelectorAll('.textbox');
-
-            // outline_lv2（`** `）のみ見出し。`**xxx` などスペースなしは本文としてそのまま展開
+            const textareas = container.querySelectorAll('.textarea');
+            const textboxes = container.querySelectorAll('.textbox');
             let spacedHeading = '';
             let bodyRow = 0;
-            for (let i = 0; i < blocks.length; i++) {
-                const block = blocks[i];
 
+            for (const block of blocks) {
                 if (isOutlineLv2(block)) {
                     spacedHeading = parseOutlineLv2Title(block);
                     continue;
                 }
 
-                if (spacedHeading !== '') {
-                    textboxes[bodyRow].value = spacedHeading;
-                    textareas[bodyRow].value = block;
-                    textareas[bodyRow].style.height = "auto";
-                    textareas[bodyRow].style.height = textareas[bodyRow].scrollHeight + "px";
-                    bodyRow++;
-                    continue;
-                }
-
-                let title = '';
-                if (bodyRow > 0) {
-                    title = textboxes[bodyRow - 1].value;
-                }
-                textboxes[bodyRow].value = title;
+                textboxes[bodyRow].value = spacedHeading !== ''
+                    ? spacedHeading
+                    : (bodyRow > 0 ? textboxes[bodyRow - 1].value : '');
                 textareas[bodyRow].value = block;
-                textareas[bodyRow].style.height = "auto";
-                textareas[bodyRow].style.height = textareas[bodyRow].scrollHeight + "px";
+                textareas[bodyRow].style.height = 'auto';
+                textareas[bodyRow].style.height = textareas[bodyRow].scrollHeight + 'px';
                 bodyRow++;
             }
         }
@@ -662,43 +528,33 @@
         function toggleImportSection() {
             const section = document.getElementById('importSection');
             const btn = document.getElementById('toggleBtn');
-
-            if (section.style.display === 'none') {
-                section.style.display = 'block';
-                btn.textContent = '🔽 hide import text area';
-            } else {
-                section.style.display = 'none';
-                btn.textContent = '🔼 show import text area';
-            }
+            const isHidden = section.style.display === 'none';
+            section.style.display = isHidden ? 'block' : 'none';
+            btn.textContent = isHidden ? '🔽 hide import text area' : '🔼 show import text area';
         }
 
         function setupAutocomplete(input) {
-            input.addEventListener("input", () => showList(input));
+            input.addEventListener('input', () => showList(input));
 
-            input.addEventListener("change", () => {
+            input.addEventListener('change', () => {
                 const val = input.value.trim();
                 if (!val) return;
-
-                const existingIndex = items.indexOf(val);
-                if (existingIndex !== -1) {
-                    items.splice(existingIndex, 1);
-                }
+                const idx = items.indexOf(val);
+                if (idx !== -1) items.splice(idx, 1);
                 items.unshift(val);
                 lastCommittedValue = val;
                 showList(input);
             });
 
-            input.addEventListener("blur", () => {
+            input.addEventListener('blur', () => {
                 const val = input.value.trim();
-                if (val && !items.includes(val)) {
-                    items.unshift(val);
-                }
+                if (val && !items.includes(val)) items.unshift(val);
             });
 
-            input.addEventListener("keydown", (e) => {
-                const options = list.querySelectorAll("li");
+            input.addEventListener('keydown', (e) => {
+                const options = list.querySelectorAll('li');
 
-                if (e.altKey && e.key.toLowerCase() === "u") {
+                if (e.altKey && e.key.toLowerCase() === 'u') {
                     e.preventDefault();
                     if (lastCommittedValue) {
                         input.value = lastCommittedValue;
@@ -707,33 +563,29 @@
                     return;
                 }
 
-                if (list.style.display === "block" && options.length > 0) {
-                    if (e.key === "ArrowDown") {
-                        e.preventDefault();
-                        activeIndex = (activeIndex + 1) % options.length;
-                        updateActiveOption(options);
-                    } else if (e.key === "ArrowUp") {
-                        e.preventDefault();
-                        activeIndex = (activeIndex - 1 + options.length) % options.length;
-                        updateActiveOption(options);
-                    } else if (e.key === "Enter" && activeIndex >= 0) {
-                        e.preventDefault();
-                        const selected = options[activeIndex].textContent;
-                        input.value = selected;
-                        lastCommittedValue = selected;
-                        list.style.display = "none";
-                        activeIndex = -1;
-                    }
+                if (list.style.display !== 'block' || options.length === 0) return;
+
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    activeIndex = (activeIndex + 1) % options.length;
+                    updateActiveOption(options);
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    activeIndex = (activeIndex - 1 + options.length) % options.length;
+                    updateActiveOption(options);
+                } else if (e.key === 'Enter' && activeIndex >= 0) {
+                    e.preventDefault();
+                    input.value = options[activeIndex].textContent;
+                    lastCommittedValue = input.value;
+                    list.style.display = 'none';
+                    activeIndex = -1;
                 }
             });
 
-            input.addEventListener("focusout", () => {
+            input.addEventListener('focusout', () => {
                 setTimeout(() => {
-                    if (
-                        document.activeElement !== list &&
-                        !list.contains(document.activeElement)
-                    ) {
-                        list.style.display = "none";
+                    if (!list.contains(document.activeElement)) {
+                        list.style.display = 'none';
                         activeIndex = -1;
                     }
                 }, 10);
@@ -743,43 +595,22 @@
         document.querySelectorAll('.textbox').forEach(setupAutocomplete);
 
         function outputToTextarea() {
-            const rows = document.querySelectorAll('.input-row');
-            const outlineMap = new Map();
+            const outlineMap = buildOutlineMap(document.querySelectorAll('.input-row'));
+            const sortedMap = new Map([...outlineMap].sort((a, b) => a[0].localeCompare(b[0])));
 
-            rows.forEach(row => {
-                const title = row.querySelector('.textbox').value.trim() || '未整理';
-                const content = row.querySelector('.textarea').value.trim();
-
-                // テキストエリアが空ならスキップ
-                if (content === '') return;
-
-                if (!outlineMap.has(title)) {
-                    outlineMap.set(title, []);
-                }
-                outlineMap.get(title).push(content);
-            });
-
-            const sortedMap = new Map(
-                [...outlineMap].sort((a, b) => a[0].localeCompare(b[0]))
-            );
-
-            // '未整理'を最後に移動
-            const value = sortedMap.get('未整理'); // 値を取得
-            sortedMap.delete('未整理');            // 一度削除
-            sortedMap.set('未整理', value);        // 再度追加（→ 末尾に来る）　
-
-            let orgText = '';
-
-            for (const [title, contents] of sortedMap.entries()) {
-                if (contents == null || contents.length === 0) continue;
-
-                orgText += `** ${title}\n\n`;
-                contents.forEach(text => {
-                    orgText += `${text}\n\n\n`;
-                });
+            if (sortedMap.has('未整理')) {
+                const v = sortedMap.get('未整理');
+                sortedMap.delete('未整理');
+                sortedMap.set('未整理', v);
             }
 
-            document.getElementById("orgExportArea").value = orgText;
+            let orgText = '';
+            for (const [title, contents] of sortedMap) {
+                orgText += `** ${title}\n\n`;
+                contents.forEach(text => { orgText += `${text}\n\n\n`; });
+            }
+
+            document.getElementById('orgExportArea').value = orgText;
         }
 
         function toggleDarkMode() {
