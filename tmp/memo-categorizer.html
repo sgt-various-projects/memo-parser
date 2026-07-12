@@ -162,7 +162,11 @@
     /* ===== ボード ===== */
     .sel-bar { font-size: 0.82rem; color: #95a5a6; margin-bottom: 12px; min-height: 1.2em; }
     .sel-bar.active { color: #2980b9; font-weight: 600; }
-    .board-wrap { overflow-x: auto; padding-bottom: 8px; }
+    .board-wrap { overflow-x: auto; padding-bottom: 8px; scrollbar-width: thick; scrollbar-color: #b0bec5 #eef0f3; }
+    .board-wrap::-webkit-scrollbar { height: 14px; }
+    .board-wrap::-webkit-scrollbar-track { background: #eef0f3; border-radius: 7px; }
+    .board-wrap::-webkit-scrollbar-thumb { background: #b0bec5; border-radius: 7px; border: 3px solid #eef0f3; }
+    .board-wrap::-webkit-scrollbar-thumb:hover { background: #7f8c8d; }
     /* 仕様⑬: align-items: stretch でカード列エリアを全列で同じ高さに揃える */
     .board {
       display: flex;
@@ -332,6 +336,96 @@
     }
 
     .hidden { display: none !important; }
+
+    /* ⑭ Sticky column header bar */
+    #sticky-bar-outer {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 200;
+      background: #eef0f3;
+      display: none;
+      border-bottom: 2px solid #dde1e7;
+      padding: 4px 0 6px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+    }
+    .sticky-bar-wrap {
+      max-width: 1500px;
+      margin: 0 auto;
+      padding: 0 20px;
+      overflow: hidden;
+    }
+    #sticky-inner {
+      display: flex;
+      gap: 14px;
+      will-change: transform;
+    }
+    .sticky-col-label {
+      min-width: 210px;
+      width: 210px;
+      flex-shrink: 0;
+      font-size: 0.84rem;
+      font-weight: 700;
+      color: #5d6d7e;
+      text-align: center;
+      padding: 6px 8px;
+      background: #f5f7fa;
+      border: 1.5px solid #e5e9ef;
+      border-radius: 0 0 8px 8px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .sticky-add-wrap {
+      min-width: 60px;
+      width: 60px;
+      flex-shrink: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+    }
+    #sticky-add-btn {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: #fff;
+      border: 2.5px dashed #b0bec5;
+      color: #7f8c8d;
+      font-size: 1.2rem;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      padding: 0; line-height: 1;
+      transition: background 0.2s, color 0.2s, border-color 0.2s, box-shadow 0.2s;
+    }
+    #sticky-add-btn:hover {
+      background: #3498db; color: #fff;
+      border-color: #3498db; border-style: solid;
+      box-shadow: 0 3px 8px rgba(52,152,219,0.35);
+    }
+    #sticky-add-form {
+      display: none;
+      position: absolute;
+      top: calc(100% + 4px);
+      right: 0;
+      background: #fff;
+      border: 1.5px solid #3498db;
+      border-radius: 8px;
+      padding: 8px;
+      z-index: 300;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      min-width: 160px;
+      flex-direction: column;
+      gap: 5px;
+    }
+    #sticky-cat-input {
+      padding: 6px 8px;
+      border: 1.5px solid #3498db;
+      border-radius: 6px;
+      font-size: 0.84rem;
+      font-family: inherit;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    #sticky-cat-input:focus { outline: none; }
   </style>
 </head>
 <body>
@@ -393,6 +487,13 @@
 <!-- 仕様②: ラバーバンド選択用オーバーレイ -->
 <div id="rubber-band"></div>
 
+<!-- ⑭ Sticky column header bar -->
+<div id="sticky-bar-outer">
+  <div class="sticky-bar-wrap">
+    <div id="sticky-inner"></div>
+  </div>
+</div>
+
 <script>
 /* ============================================================
    メモ整理アプリ — JavaScript
@@ -405,6 +506,28 @@ let selected = new Set();  // 選択中カードのid集合
 let dragInfo = null;       // { cardIds: string[], fromColId: string }
 let _n       = 0;
 const uid    = () => 'c' + _n++;
+
+// ⑯: ドラッグ時の横自動スクロール
+let _autoScrollRAF  = null;
+let _autoScrollSpeed = 0;
+function _startAutoScroll(speed) {
+  _autoScrollSpeed = speed;
+  if (_autoScrollRAF) return;
+  const step = () => {
+    const bw = document.querySelector('.board-wrap');
+    if (bw && _autoScrollSpeed !== 0) {
+      bw.scrollLeft += _autoScrollSpeed;
+      _autoScrollRAF = requestAnimationFrame(step);
+    } else {
+      _autoScrollRAF = null;
+    }
+  };
+  _autoScrollRAF = requestAnimationFrame(step);
+}
+function _stopAutoScroll() {
+  _autoScrollSpeed = 0;
+  if (_autoScrollRAF) { cancelAnimationFrame(_autoScrollRAF); _autoScrollRAF = null; }
+}
 
 // ラバーバンド状態
 const rb = { active: false, x0: 0, y0: 0 };
@@ -445,6 +568,93 @@ function render() {
   // 仕様⑤: 右端に「＋」カテゴリ追加ボタン
   board.appendChild(makeAddColWidget());
   updateSelBar();
+  updateStickyBar();
+}
+
+// ⑭: Build sticky header bar content
+function updateStickyBar() {
+  const stickyInner = document.getElementById('sticky-inner');
+  if (!stickyInner) return;
+  stickyInner.innerHTML = '';
+
+  for (const col of columns) {
+    const label = document.createElement('div');
+    label.className = 'sticky-col-label';
+    label.textContent = col.name;
+    stickyInner.appendChild(label);
+  }
+
+  const addWrap = document.createElement('div');
+  addWrap.className = 'sticky-add-wrap';
+
+  const addBtn = document.createElement('button');
+  addBtn.id = 'sticky-add-btn';
+  addBtn.title = 'カテゴリを追加';
+  addBtn.textContent = '＋';
+  addBtn.addEventListener('mousedown', e => e.stopPropagation());
+
+  const form = document.createElement('div');
+  form.id = 'sticky-add-form';
+
+  const inp = document.createElement('input');
+  inp.id = 'sticky-cat-input';
+  inp.type = 'text';
+  inp.placeholder = 'カテゴリ名';
+  inp.addEventListener('mousedown', e => e.stopPropagation());
+
+  const okBtn = document.createElement('button');
+  okBtn.className = 'btn-sm';
+  okBtn.style.cssText = 'background:#3498db;color:#fff;';
+  okBtn.textContent = '追加';
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.className = 'btn-sm';
+  cancelBtn.style.cssText = 'background:#95a5a6;color:#fff;';
+  cancelBtn.textContent = '×';
+
+  const doStickyAdd = () => {
+    const name = inp.value.trim();
+    if (name) { columns.push({ id: uid(), name, cards: [] }); render(); }
+    form.style.display = 'none';
+  };
+
+  addBtn.addEventListener('click', () => {
+    const showing = form.style.display === 'flex';
+    form.style.display = showing ? 'none' : 'flex';
+    if (!showing) { inp.value = ''; inp.focus(); }
+  });
+  okBtn.addEventListener('click', doStickyAdd);
+  cancelBtn.addEventListener('click', () => { form.style.display = 'none'; });
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter') doStickyAdd();
+    if (e.key === 'Escape') form.style.display = 'none';
+  });
+
+  form.appendChild(inp);
+  form.appendChild(okBtn);
+  form.appendChild(cancelBtn);
+  addWrap.appendChild(addBtn);
+  addWrap.appendChild(form);
+  stickyInner.appendChild(addWrap);
+
+  const bw = document.querySelector('.board-wrap');
+  if (bw) stickyInner.style.transform = `translateX(-${bw.scrollLeft}px)`;
+}
+
+// ⑭: Show/hide sticky bar based on scroll position
+function updateStickyVisibility() {
+  const boardPanel = document.getElementById('board-panel');
+  const boardWrap  = document.querySelector('.board-wrap');
+  const stickyBar  = document.getElementById('sticky-bar-outer');
+  if (!stickyBar) return;
+  if (!boardPanel || boardPanel.classList.contains('hidden') || !boardWrap) {
+    stickyBar.style.display = 'none';
+    return;
+  }
+  const panelRect = boardPanel.getBoundingClientRect();
+  const wrapRect  = boardWrap.getBoundingClientRect();
+  stickyBar.style.display =
+    (wrapRect.top < 0 && panelRect.bottom > 0) ? 'block' : 'none';
 }
 
 // ----- カラム要素生成 -----
@@ -465,6 +675,7 @@ function makeColumn(col) {
     const v = hdr.textContent.trim();
     col.name = v || col.name;
     if (!v) hdr.textContent = col.name;
+    updateStickyBar();
   });
   // ラバーバンド開始防止
   hdr.addEventListener('mousedown', e => e.stopPropagation());
@@ -782,6 +993,7 @@ document.getElementById('process-btn').addEventListener('click', () => {
   document.getElementById('export-panel').classList.remove('hidden');
   document.getElementById('export-output').value = '';
   document.getElementById('board-panel').scrollIntoView({ behavior: 'smooth' });
+  updateStickyVisibility();
 });
 
 // Exportボタン（仕様⑥: 毎回最新状態を反映）
@@ -803,6 +1015,34 @@ document.getElementById('export-org-btn').addEventListener('click', () => {
   document.body.removeChild(a);
   URL.revokeObjectURL(a.href);
 });
+
+// ⑯: ドラッグ時の横自動スクロール（エッジ120pxで発動、最大25px/frame）
+window.addEventListener('dragover', e => {
+  if (!dragInfo) { _stopAutoScroll(); return; }
+  const bw = document.querySelector('.board-wrap');
+  if (!bw) { _stopAutoScroll(); return; }
+  const rect = bw.getBoundingClientRect();
+  if (e.clientY < rect.top || e.clientY > rect.bottom) { _stopAutoScroll(); return; }
+  const edge = 120, maxSpd = 25;
+  if (e.clientX < rect.left + edge) {
+    _startAutoScroll(-Math.ceil((1 - (e.clientX - rect.left) / edge) * maxSpd));
+  } else if (e.clientX > rect.right - edge) {
+    _startAutoScroll(Math.ceil((1 - (rect.right - e.clientX) / edge) * maxSpd));
+  } else {
+    _stopAutoScroll();
+  }
+});
+document.addEventListener('dragend', _stopAutoScroll);
+
+// ⑭: Board-wrap horizontal scroll → sync sticky inner
+document.querySelector('.board-wrap').addEventListener('scroll', () => {
+  const inner = document.getElementById('sticky-inner');
+  const bw = document.querySelector('.board-wrap');
+  if (inner && bw) inner.style.transform = `translateX(-${bw.scrollLeft}px)`;
+});
+
+// ⑭: Page scroll → show/hide sticky bar
+window.addEventListener('scroll', updateStickyVisibility, { passive: true });
 
 // 仕様⑨: リロードボタン（確認ダイアログ付き）
 document.getElementById('reload-btn').addEventListener('click', () => {
