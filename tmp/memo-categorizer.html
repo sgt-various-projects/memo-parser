@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<!--
+  ============================================================
+  メモ整理アプリ  index.html
+  ============================================================
+
+  [仕様概要]
+  ・メモフォームに空行（1行以上）区切りでメモを貼り付け
+  ・カテゴリフォームに改行区切りでカテゴリ名を入力（空行無視）
+  ・「分類開始」ボタンでカンバンボードを展開
+    - 「未整理」列に全カードを配置
+    - 各カテゴリ列は初期状態で空
+    - カードをドラッグ＆ドロップで列間移動
+    - クリック：単独選択、Ctrl+クリック：複数選択
+    - 空白エリアのマウスドラッグ：ラバーバンド範囲選択
+    - 複数選択したカードをまとめてドラッグ移動可能
+    - ドラッグ中、移動対象の全カードがハイライト表示
+    - カード内容：ダブルクリックで編集（編集中ドラッグ無効）
+    - カテゴリ名：クリックで直接編集
+    - ボード右端の「＋」ボタンでカテゴリ追加
+  ・「Export」ボタン：現在の分類を出力フォームに表示
+    - カード間: 2空行、セクション間: 1空行
+    - 形式: ** カテゴリ名\nカード内容
+  ・「Export org-file」ボタン：YYYY-MM-DD.org をダウンロード
+  ・F5 / Ctrl+R によるブラウザリロードをブロック
+    → 専用リロードボタン（確認ダイアログ付き）を画面最上部に配置
+
+  [修正履歴]
+  2026-07-12 初期実装
+  2026-07-12 修正①〜⑪適用
+    ① プレースホルダー文字色を薄く（#c5cad2）
+    ② マウスドラッグによるラバーバンド複数選択
+    ③ ドラッグ中の全選択カードをハイライト表示（.being-moved）
+    ④ カード内容・カテゴリ名の contenteditable 編集
+    ⑤ ボード右端「＋」ボタンでカテゴリ追加
+    ⑥ Export が常に最新の分類状態を反映
+    ⑦ Exportエリアの高さ拡大（480px）
+    ⑧ Export org-fileボタンを紫色に変更
+    ⑨ F5/Ctrl+R 禁止 + 専用リロードボタン（最上部）
+    ⑩ CLAUDE.md に仕様・指示を記録
+    ⑪ 実装ファイル内にコメントで仕様記述（本コメント）
+  ============================================================
+-->
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>メモ整理アプリ</title>
+  <style>
+    /* ===== Reset ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Sans', 'Yu Gothic UI', sans-serif;
+      background: #eef0f3;
+      color: #2c3e50;
+      min-height: 100vh;
+      padding: 14px 20px 32px;
+    }
+
+    /* ===== リロードバー（最上部・誤操作防止のため控えめなデザイン） =====
+       仕様⑨: F5/Ctrl+Rを禁止し、専用ボタンで確認後リロード */
+    .reload-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #fefce8;
+      border: 1px solid #fde68a;
+      border-radius: 8px;
+      padding: 5px 14px;
+      margin-bottom: 14px;
+      font-size: 0.76rem;
+      color: #92400e;
+    }
+    .btn-reload {
+      background: transparent;
+      border: 1.5px solid #dc2626;
+      color: #dc2626;
+      font-size: 0.75rem;
+      padding: 3px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background 0.2s, color 0.2s;
+      flex-shrink: 0;
+    }
+    .btn-reload:hover { background: #dc2626; color: #fff; }
+
+    /* ===== 共通パネル ===== */
+    .wrap { max-width: 1500px; margin: 0 auto; }
+    h1 {
+      text-align: center;
+      font-size: 1.35rem;
+      color: #34495e;
+      margin-bottom: 18px;
+      letter-spacing: 0.05em;
+    }
+    .panel {
+      background: #fff;
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      margin-bottom: 20px;
+    }
+
+    /* ===== 入力エリア ===== */
+    .input-row { display: flex; gap: 16px; margin-bottom: 14px; }
+    .input-group { flex: 1; }
+    .input-group.narrow { flex: 0 0 220px; }
+    .input-group label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #7f8c8d;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .input-group textarea {
+      width: 100%;
+      height: 190px;
+      padding: 10px 12px;
+      border: 1.5px solid #dde1e7;
+      border-radius: 8px;
+      font-family: 'Menlo', 'Consolas', 'Courier New', monospace;
+      font-size: 0.88rem;
+      line-height: 1.6;
+      resize: vertical;
+      background: #fafbfc;
+      color: #2c3e50;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    /* 仕様①: プレースホルダーを薄い色に */
+    .input-group textarea::placeholder { color: #c5cad2; }
+    .input-group textarea:focus {
+      outline: none;
+      border-color: #3498db;
+      box-shadow: 0 0 0 3px rgba(52,152,219,0.15);
+    }
+    .hint { font-size: 0.76rem; color: #bbb; margin-top: 5px; }
+
+    /* ===== ボタン共通 ===== */
+    .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .btn {
+      padding: 9px 22px;
+      border: none;
+      border-radius: 7px;
+      cursor: pointer;
+      font-size: 0.92rem;
+      font-weight: 600;
+      transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-blue   { background: #3498db; color: #fff; }
+    .btn-blue:hover   { background: #2980b9; box-shadow: 0 3px 8px rgba(52,152,219,0.35); }
+    .btn-green  { background: #27ae60; color: #fff; }
+    .btn-green:hover  { background: #219a52; box-shadow: 0 3px 8px rgba(39,174,96,0.35); }
+    /* 仕様⑧: org-fileボタンを紫色にして非活性に見えないよう改善 */
+    .btn-purple { background: #8e44ad; color: #fff; }
+    .btn-purple:hover { background: #7d3c98; box-shadow: 0 3px 8px rgba(142,68,173,0.35); }
+
+    /* ===== ボード ===== */
+    .sel-bar { font-size: 0.82rem; color: #95a5a6; margin-bottom: 12px; min-height: 1.2em; }
+    .sel-bar.active { color: #2980b9; font-weight: 600; }
+    .board-wrap { overflow-x: auto; padding-bottom: 8px; }
+    /* 仕様⑬: align-items: stretch でカード列エリアを全列で同じ高さに揃える */
+    .board {
+      display: flex;
+      gap: 14px;
+      min-height: 380px;
+      padding: 4px 2px;
+      align-items: stretch;
+    }
+
+    /* ===== カラム ===== */
+    .column {
+      min-width: 210px;
+      width: 210px;
+      flex-shrink: 0;
+      background: #f5f7fa;
+      border-radius: 10px;
+      padding: 12px 10px;
+      display: flex;
+      flex-direction: column;
+      border: 1.5px solid #e5e9ef;
+    }
+    /* 仕様④: カテゴリ名はクリックで編集可能（contenteditable） */
+    .column-header {
+      font-size: 0.84rem;
+      font-weight: 700;
+      color: #5d6d7e;
+      text-align: center;
+      padding: 4px 4px 10px;
+      border-bottom: 2px solid #dde1e7;
+      margin-bottom: 10px;
+      cursor: text;
+      border-radius: 4px;
+      transition: background 0.15s;
+      min-height: 1.5em;
+      word-break: break-all;
+    }
+    .column-header:focus {
+      outline: none;
+      background: rgba(52,152,219,0.06);
+      border-bottom-color: #3498db;
+    }
+    .column-cards {
+      flex: 1;
+      min-height: 80px;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      border-radius: 7px;
+      padding: 4px;
+      transition: background 0.15s;
+    }
+    .column-cards.drag-over {
+      background: rgba(52,152,219,0.12);
+      outline: 2px dashed rgba(52,152,219,0.45);
+      outline-offset: -2px;
+    }
+
+    /* ===== カード ===== */
+    .card {
+      background: #fff;
+      border: 1.5px solid #e0e4ea;
+      border-radius: 7px;
+      padding: 9px 11px;
+      font-family: 'Menlo', 'Consolas', 'Courier New', monospace;
+      font-size: 0.84rem;
+      white-space: pre-wrap;
+      cursor: grab;
+      line-height: 1.55;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      transition: border-color 0.15s, box-shadow 0.15s, background 0.15s, opacity 0.15s;
+      word-break: break-all;
+    }
+    .card:hover:not(.editing) { border-color: #b0bec5; box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+    .card.selected { border-color: #3498db; background: #ebf5fb; box-shadow: 0 0 0 2.5px rgba(52,152,219,0.28); }
+    /* 仕様③: ドラッグ中の全選択カードをブルーハイライト表示 */
+    .card.being-moved {
+      border-color: #2471a3;
+      background: #d6eaf8;
+      box-shadow: 0 4px 14px rgba(36,113,163,0.45);
+      opacity: 0.75;
+    }
+    .card.dragging { opacity: 0.3; }
+    /* 仕様④: ダブルクリックで編集モード、編集中はオレンジ枠 */
+    .card.editing {
+      cursor: text;
+      border-color: #f39c12;
+      box-shadow: 0 0 0 2px rgba(243,156,18,0.3);
+      white-space: pre-wrap;
+      user-select: text;
+    }
+
+    /* ===== カテゴリ追加ボタン（仕様⑤） ===== */
+    .add-col-wrap {
+      min-width: 60px;
+      width: 60px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding-top: 12px;
+    }
+    .btn-add-col {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: #fff;
+      border: 2.5px dashed #b0bec5;
+      color: #7f8c8d;
+      font-size: 1.4rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s, color 0.2s, border-color 0.2s, box-shadow 0.2s;
+      padding: 0;
+      line-height: 1;
+    }
+    .btn-add-col:hover {
+      background: #3498db;
+      color: #fff;
+      border-color: #3498db;
+      border-style: solid;
+      box-shadow: 0 3px 8px rgba(52,152,219,0.35);
+    }
+    .add-col-form {
+      display: none;
+      flex-direction: column;
+      gap: 5px;
+      margin-top: 8px;
+      width: 150px;
+    }
+    .new-cat-input {
+      padding: 6px 8px;
+      border: 1.5px solid #3498db;
+      border-radius: 6px;
+      font-size: 0.84rem;
+      font-family: inherit;
+      width: 100%;
+    }
+    .new-cat-input:focus { outline: none; }
+    .btn-sm { padding: 4px 10px; font-size: 0.8rem; border-radius: 5px; border: none; cursor: pointer; font-weight: 600; }
+
+    /* ===== ラバーバンド選択矩形（仕様②） ===== */
+    #rubber-band {
+      position: fixed;
+      border: 1.5px dashed #3498db;
+      background: rgba(52,152,219,0.07);
+      pointer-events: none;
+      z-index: 9999;
+      display: none;
+    }
+
+    /* ===== Export（仕様⑦: 高さ480px） ===== */
+    .export-output {
+      width: 100%;
+      height: 480px;
+      padding: 12px 14px;
+      border: 1.5px solid #dde1e7;
+      border-radius: 8px;
+      font-family: 'Menlo', 'Consolas', 'Courier New', monospace;
+      font-size: 0.88rem;
+      line-height: 1.7;
+      resize: vertical;
+      background: #fafbfc;
+      color: #2c3e50;
+    }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+<!-- 仕様⑨: リロードバー（最上部・目立たないデザインで誤操作防止） -->
+<div class="reload-bar">
+  <span>⚠ F5・Ctrl+R による誤リロードを防止しています</span>
+  <button id="reload-btn" class="btn-reload" title="ページをリロード（入力データが全て消去されます）">
+    ↺ リロード（データ消去）
+  </button>
+</div>
+
+<div class="wrap">
+  <h1>メモ整理アプリ</h1>
+
+  <!-- 入力パネル -->
+  <div class="panel">
+    <div class="input-row">
+      <div class="input-group">
+        <label>メモ（空行で区切る）</label>
+        <textarea id="memo-input"
+          placeholder="あいうえお&#10;かきくけこ&#10;&#10;さしすせそ&#10;たちつてと&#10;&#10;&#10;なにぬねの"></textarea>
+        <p class="hint">1行以上の空行をメモの区切りとして認識します</p>
+      </div>
+      <div class="input-group narrow">
+        <label>カテゴリ（改行区切り）</label>
+        <textarea id="category-input"
+          placeholder="カテゴリA&#10;カテゴリB&#10;カテゴリC"></textarea>
+        <p class="hint">空行は無視されます</p>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-blue" id="process-btn">分類開始</button>
+    </div>
+  </div>
+
+  <!-- ボードパネル -->
+  <div class="panel hidden" id="board-panel">
+    <div class="sel-bar" id="sel-bar">
+      クリック: 選択 / Ctrl+クリック: 複数選択 / 空白ドラッグ: 範囲選択 / カードドラッグ: 移動 / ダブルクリック: 編集
+    </div>
+    <div class="board-wrap">
+      <div class="board" id="board"></div>
+    </div>
+  </div>
+
+  <!-- Exportパネル -->
+  <div class="panel hidden" id="export-panel">
+    <div class="btn-row" style="margin-bottom:14px;">
+      <button class="btn btn-green"  id="export-btn">Export</button>
+      <!-- 仕様⑧: 紫色ボタンで非活性感を解消 -->
+      <button class="btn btn-purple" id="export-org-btn">Export org-file</button>
+    </div>
+    <textarea class="export-output" id="export-output" readonly
+      placeholder="「Export」ボタンを押して出力"></textarea>
+  </div>
+</div>
+
+<!-- 仕様②: ラバーバンド選択用オーバーレイ -->
+<div id="rubber-band"></div>
+
+<script>
+/* ============================================================
+   メモ整理アプリ — JavaScript
+   仕様詳細はファイル先頭のHTMLコメントおよびCLAUDE.mdを参照
+   ============================================================ */
+
+// ===== STATE =====
+let columns  = [];         // [{ id, name, cards: [{id, content}] }]
+let selected = new Set();  // 選択中カードのid集合
+let dragInfo = null;       // { cardIds: string[], fromColId: string }
+let _n       = 0;
+const uid    = () => 'c' + _n++;
+
+// ラバーバンド状態
+const rb = { active: false, x0: 0, y0: 0 };
+const rbEl = document.getElementById('rubber-band');
+
+// ===== メモ解析: 1行以上の空行でブロックに分割 =====
+function parseMemos(text) {
+  if (!text.trim()) return [];
+  return text.split(/\n(?:[ \t]*\n)+/).map(b => b.trim()).filter(Boolean);
+}
+
+// ===== カテゴリ解析: 非空行を抽出 =====
+function parseCategories(text) {
+  return text.split('\n').map(l => l.trim()).filter(Boolean);
+}
+
+// ===== Export生成 =====
+// 仕様⑥: 毎回データモデルから生成して最新分類を反映
+// カード間2空行(\n\n\n)、セクション間1空行(\n\n)
+function generateExport() {
+  // 編集中カードをblurして内容をモデルに同期
+  document.querySelectorAll('.card.editing').forEach(el => el.blur());
+
+  const sections = [];
+  for (const col of columns) {
+    if (col.cards.length === 0) continue;
+    const body = col.cards.map(c => c.content).join('\n\n\n');
+    sections.push('** ' + col.name + '\n' + body);
+  }
+  return sections.join('\n\n');
+}
+
+// ===== ボード描画 =====
+function render() {
+  const board = document.getElementById('board');
+  board.innerHTML = '';
+  for (const col of columns) board.appendChild(makeColumn(col));
+  // 仕様⑤: 右端に「＋」カテゴリ追加ボタン
+  board.appendChild(makeAddColWidget());
+  updateSelBar();
+}
+
+// ----- カラム要素生成 -----
+function makeColumn(col) {
+  const wrap = document.createElement('div');
+  wrap.className = 'column';
+
+  // 仕様④: カテゴリ名は contenteditable で直接編集可能
+  const hdr = document.createElement('div');
+  hdr.className = 'column-header';
+  hdr.textContent = col.name;
+  hdr.contentEditable = 'true';
+  hdr.spellcheck = false;
+  hdr.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); hdr.blur(); }
+  });
+  hdr.addEventListener('blur', () => {
+    const v = hdr.textContent.trim();
+    col.name = v || col.name;
+    if (!v) hdr.textContent = col.name;
+  });
+  // ラバーバンド開始防止
+  hdr.addEventListener('mousedown', e => e.stopPropagation());
+  wrap.appendChild(hdr);
+
+  const cardsEl = document.createElement('div');
+  cardsEl.className = 'column-cards';
+  cardsEl.dataset.col = col.id;
+
+  for (const card of col.cards) cardsEl.appendChild(makeCard(card));
+
+  // 空白クリックで選択解除
+  cardsEl.addEventListener('click', e => {
+    if (e.target === cardsEl) { selected.clear(); applySelection(); updateSelBar(); }
+  });
+  // ドラッグ受け入れ
+  cardsEl.addEventListener('dragover', e => {
+    e.preventDefault();
+    cardsEl.classList.add('drag-over');
+  });
+  cardsEl.addEventListener('dragleave', e => {
+    if (!cardsEl.contains(e.relatedTarget)) cardsEl.classList.remove('drag-over');
+  });
+  cardsEl.addEventListener('drop', e => {
+    e.preventDefault();
+    cardsEl.classList.remove('drag-over');
+    if (dragInfo) doMove(dragInfo.cardIds, col.id);
+  });
+
+  wrap.appendChild(cardsEl);
+  return wrap;
+}
+
+// ----- カード要素生成 -----
+function makeCard(card) {
+  const el = document.createElement('div');
+  el.className = 'card' + (selected.has(card.id) ? ' selected' : '');
+  el.textContent = card.content;
+  el.dataset.card = card.id;
+  el.draggable = true;
+
+  // クリック: 選択（編集モード中は無視）
+  el.addEventListener('click', e => {
+    if (el.classList.contains('editing')) return;
+    e.stopPropagation();
+    if (e.ctrlKey || e.metaKey) {
+      selected.has(card.id) ? selected.delete(card.id) : selected.add(card.id);
+    } else {
+      const onlyThis = selected.size === 1 && selected.has(card.id);
+      selected.clear();
+      if (!onlyThis) selected.add(card.id);
+    }
+    applySelection();
+    updateSelBar();
+  });
+
+  // 仕様④: ダブルクリックで編集モード
+  el.addEventListener('dblclick', e => {
+    e.stopPropagation();
+    el.contentEditable = 'true';
+    el.draggable = false;
+    el.classList.add('editing');
+    el.classList.remove('selected');
+    selected.delete(card.id);
+    applySelection();
+    updateSelBar();
+    el.focus();
+    // カーソルを末尾に移動
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    range.collapse(false);
+    window.getSelection().removeAllRanges();
+    window.getSelection().addRange(range);
+  });
+
+  // ペースト: プレーンテキストのみ受け付け
+  el.addEventListener('paste', e => {
+    e.preventDefault();
+    const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+    document.execCommand('insertText', false, text);
+  });
+
+  // 編集終了: モデルに内容を同期
+  el.addEventListener('blur', () => {
+    if (!el.classList.contains('editing')) return;
+    el.contentEditable = 'false';
+    el.draggable = true;
+    el.classList.remove('editing');
+    const newContent = el.innerText.trim();
+    if (newContent) card.content = newContent;
+    el.textContent = card.content; // DOM正規化
+  });
+
+  // ドラッグ開始
+  el.addEventListener('dragstart', e => {
+    if (el.classList.contains('editing')) { e.preventDefault(); return; }
+    // 未選択カードをドラッグした場合は単独選択に変更
+    if (!selected.has(card.id)) { selected.clear(); selected.add(card.id); }
+    dragInfo = { cardIds: [...selected], fromColId: findColId(card.id) };
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', '');
+    // 仕様③: ドラッグ開始後、選択中の全カードに被移動スタイルを適用
+    setTimeout(() => {
+      document.querySelectorAll('.card').forEach(c => {
+        const isMoved = selected.has(c.dataset.card);
+        c.classList.toggle('dragging',    isMoved);
+        c.classList.toggle('being-moved', isMoved);
+      });
+    }, 0);
+  });
+
+  // ドラッグ終了: スタイルをリセット
+  el.addEventListener('dragend', () => {
+    document.querySelectorAll('.card').forEach(c => {
+      c.classList.remove('dragging', 'being-moved');
+    });
+    document.querySelectorAll('.column-cards.drag-over').forEach(c => {
+      c.classList.remove('drag-over');
+    });
+    dragInfo = null;
+  });
+
+  // カードのmousedownでラバーバンド開始を防ぐ
+  el.addEventListener('mousedown', e => e.stopPropagation());
+
+  return el;
+}
+
+// ----- 仕様⑤: カテゴリ追加ウィジェット -----
+function makeAddColWidget() {
+  const wrap = document.createElement('div');
+  wrap.className = 'add-col-wrap';
+
+  const btn = document.createElement('button');
+  btn.className = 'btn-add-col';
+  btn.title = 'カテゴリを追加';
+  btn.textContent = '＋';
+  btn.addEventListener('mousedown', e => e.stopPropagation());
+
+  const form = document.createElement('div');
+  form.className = 'add-col-form';
+
+  const inp = document.createElement('input');
+  inp.type = 'text';
+  inp.className = 'new-cat-input';
+  inp.placeholder = 'カテゴリ名';
+  inp.addEventListener('mousedown', e => e.stopPropagation());
+
+  const okBtn = document.createElement('button');
+  okBtn.className = 'btn-sm btn-blue';
+  okBtn.style.background = '#3498db';
+  okBtn.style.color = '#fff';
+  okBtn.textContent = '追加';
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.className = 'btn-sm';
+  cancelBtn.style.background = '#95a5a6';
+  cancelBtn.style.color = '#fff';
+  cancelBtn.textContent = '×';
+
+  form.appendChild(inp);
+  form.appendChild(okBtn);
+  form.appendChild(cancelBtn);
+  wrap.appendChild(btn);
+  wrap.appendChild(form);
+
+  const openForm = () => {
+    btn.style.display = 'none';
+    form.style.display = 'flex';
+    inp.value = '';
+    inp.focus();
+  };
+  const closeForm = () => {
+    btn.style.display = '';
+    form.style.display = 'none';
+  };
+  const doAdd = () => {
+    const name = inp.value.trim();
+    if (name) {
+      columns.push({ id: uid(), name, cards: [] });
+      render(); // 再描画（+ボタンも含めリセット）
+    } else {
+      closeForm();
+    }
+  };
+
+  btn.addEventListener('click', openForm);
+  okBtn.addEventListener('click', doAdd);
+  cancelBtn.addEventListener('click', closeForm);
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter')  doAdd();
+    if (e.key === 'Escape') closeForm();
+  });
+
+  return wrap;
+}
+
+// ===== データ操作ヘルパー =====
+function findColId(cardId) {
+  for (const col of columns) if (col.cards.some(c => c.id === cardId)) return col.id;
+  return null;
+}
+
+// カードを別カラムに移動（仕様⑥: columnsを常に最新状態に保つ）
+function doMove(cardIds, toColId) {
+  const moving = [];
+  for (const col of columns) {
+    const kept = [], gone = [];
+    for (const c of col.cards) (cardIds.includes(c.id) ? gone : kept).push(c);
+    moving.push(...gone);
+    col.cards = kept;
+  }
+  const target = columns.find(c => c.id === toColId);
+  if (target) target.cards.push(...moving);
+  selected.clear();
+  render();
+}
+
+function applySelection() {
+  document.querySelectorAll('.card').forEach(el => {
+    el.classList.toggle('selected', selected.has(el.dataset.card));
+  });
+}
+
+function updateSelBar() {
+  const bar = document.getElementById('sel-bar');
+  if (selected.size === 0) {
+    bar.className = 'sel-bar';
+    bar.textContent = 'クリック: 選択 / Ctrl+クリック: 複数選択 / 空白ドラッグ: 範囲選択 / カードドラッグ: 移動 / ダブルクリック: 編集';
+  } else {
+    bar.className = 'sel-bar active';
+    bar.textContent = selected.size + ' 枚を選択中 — ドラッグして移動 / Ctrl+クリックで追加選択';
+  }
+}
+
+// ===== 仕様②: ラバーバンド（矩形範囲）複数選択 =====
+// ボードの空白エリアをドラッグすると選択矩形が表示され、
+// 矩形と重なったカードが選択される
+document.getElementById('board').addEventListener('mousedown', e => {
+  if (e.button !== 0) return;
+  // カード・ヘッダー・ボタン上のクリックは除外
+  let t = e.target;
+  while (t && t.id !== 'board') {
+    if (t.classList.contains('card') ||
+        t.classList.contains('column-header') ||
+        t.tagName === 'BUTTON' ||
+        t.tagName === 'INPUT') return;
+    t = t.parentElement;
+  }
+
+  rb.active = true;
+  rb.x0 = e.clientX;
+  rb.y0 = e.clientY;
+  rbEl.style.cssText = `left:${e.clientX}px;top:${e.clientY}px;width:0;height:0;display:block;`;
+
+  if (!e.ctrlKey && !e.metaKey) { selected.clear(); applySelection(); }
+  e.preventDefault(); // テキスト選択を防ぐ
+});
+
+document.addEventListener('mousemove', e => {
+  if (!rb.active) return;
+  const x = Math.min(e.clientX, rb.x0);
+  const y = Math.min(e.clientY, rb.y0);
+  const w = Math.abs(e.clientX - rb.x0);
+  const h = Math.abs(e.clientY - rb.y0);
+  rbEl.style.left   = x + 'px';
+  rbEl.style.top    = y + 'px';
+  rbEl.style.width  = w + 'px';
+  rbEl.style.height = h + 'px';
+
+  // ビューポート座標で矩形と各カードの重なりを判定
+  document.querySelectorAll('.card:not(.editing)').forEach(cardEl => {
+    const r = cardEl.getBoundingClientRect();
+    const overlaps = !(x + w < r.left || x > r.right || y + h < r.top || y > r.bottom);
+    if (overlaps) selected.add(cardEl.dataset.card);
+    else if (!e.ctrlKey && !e.metaKey) selected.delete(cardEl.dataset.card);
+  });
+  applySelection();
+  updateSelBar();
+});
+
+document.addEventListener('mouseup', () => {
+  if (!rb.active) return;
+  rb.active = false;
+  rbEl.style.display = 'none';
+  updateSelBar();
+});
+
+// ===== 仕様⑨: F5 / Ctrl+R / Ctrl+Shift+R によるリロードを禁止 =====
+window.addEventListener('keydown', e => {
+  if (e.key === 'F5' ||
+      (e.ctrlKey && (e.key === 'r' || e.key === 'R'))) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+}, true); // キャプチャフェーズで捕捉してブラウザより先に処理
+
+// ===== イベントバインディング =====
+
+// 分類開始ボタン
+document.getElementById('process-btn').addEventListener('click', () => {
+  const memos = parseMemos(document.getElementById('memo-input').value);
+  const cats  = parseCategories(document.getElementById('category-input').value);
+  if (!memos.length) { alert('メモを入力してください'); return; }
+
+  _n = 0;
+  selected.clear();
+  columns = [
+    { id: uid(), name: '未整理', cards: memos.map(m => ({ id: uid(), content: m })) },
+    ...cats.map(name => ({ id: uid(), name, cards: [] }))
+  ];
+
+  render();
+  document.getElementById('board-panel').classList.remove('hidden');
+  document.getElementById('export-panel').classList.remove('hidden');
+  document.getElementById('export-output').value = '';
+  document.getElementById('board-panel').scrollIntoView({ behavior: 'smooth' });
+});
+
+// Exportボタン（仕様⑥: 毎回最新状態を反映）
+document.getElementById('export-btn').addEventListener('click', () => {
+  document.getElementById('export-output').value = generateExport();
+});
+
+// Export org-fileボタン
+document.getElementById('export-org-btn').addEventListener('click', () => {
+  const text = generateExport();
+  document.getElementById('export-output').value = text;
+  const date = new Date().toISOString().slice(0, 10);
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = date + '.org';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+});
+
+// 仕様⑨: リロードボタン（確認ダイアログ付き）
+document.getElementById('reload-btn').addEventListener('click', () => {
+  if (confirm('ページをリロードします。\n入力・分類データは全て失われます。よろしいですか？')) {
+    window.location.reload();
+  }
+});
+</script>
+</body>
+</html>
