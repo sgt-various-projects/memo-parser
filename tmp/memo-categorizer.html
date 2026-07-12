@@ -531,7 +531,8 @@ function _stopAutoScroll() {
 }
 
 // ラバーバンド状態
-const rb = { active: false, x0: 0, y0: 0 };
+// docX0/docY0 はドキュメント座標で記録（スクロール後も正しく比較するため）
+const rb = { active: false, docX0: 0, docY0: 0, lastCX: 0, lastCY: 0, lastCtrl: false };
 const rbEl = document.getElementById('rubber-band');
 
 // ===== メモ解析: 1行以上の空行でブロックに分割 =====
@@ -927,42 +928,62 @@ document.getElementById('board').addEventListener('mousedown', e => {
     t = t.parentElement;
   }
 
-  rb.active = true;
-  rb.x0 = e.clientX;
-  rb.y0 = e.clientY;
+  rb.active  = true;
+  rb.docX0   = e.clientX + window.scrollX;
+  rb.docY0   = e.clientY + window.scrollY;
+  rb.lastCX  = e.clientX;
+  rb.lastCY  = e.clientY;
+  rb.lastCtrl = e.ctrlKey || e.metaKey;
   rbEl.style.cssText = `left:${e.clientX}px;top:${e.clientY}px;width:0;height:0;display:block;`;
 
   if (!e.ctrlKey && !e.metaKey) { selected.clear(); applySelection(); }
   e.preventDefault(); // テキスト選択を防ぐ
 });
 
-document.addEventListener('mousemove', e => {
-  if (!rb.active || dragInfo) return; // ドラッグ中はラバーバンド描画しない
-  const x = Math.min(e.clientX, rb.x0);
-  const y = Math.min(e.clientY, rb.y0);
-  const w = Math.abs(e.clientX - rb.x0);
-  const h = Math.abs(e.clientY - rb.y0);
-  rbEl.style.left   = x + 'px';
-  rbEl.style.top    = y + 'px';
+// ラバーバンド矩形をドキュメント座標で計算・描画・選択反映
+function rbApply(clientX, clientY, ctrlOrMeta) {
+  rb.lastCX   = clientX;
+  rb.lastCY   = clientY;
+  rb.lastCtrl = ctrlOrMeta;
+
+  const docX = clientX + window.scrollX;
+  const docY = clientY + window.scrollY;
+  const x = Math.min(docX, rb.docX0);
+  const y = Math.min(docY, rb.docY0);
+  const w = Math.abs(docX - rb.docX0);
+  const h = Math.abs(docY - rb.docY0);
+
+  // 固定要素のためビューポート座標に戻して描画
+  rbEl.style.left   = (x - window.scrollX) + 'px';
+  rbEl.style.top    = (y - window.scrollY) + 'px';
   rbEl.style.width  = w + 'px';
   rbEl.style.height = h + 'px';
 
-  // ビューポート座標で矩形と各カードの重なりを判定
-  // ビューポート外にスクロールしたカードは選択状態を変更しない
+  // カードもドキュメント座標で比較（スクロール後も正しく判定できる）
   document.querySelectorAll('.card:not(.editing)').forEach(cardEl => {
-    const r = cardEl.getBoundingClientRect();
-    const inViewport = r.top < window.innerHeight && r.bottom > 0 &&
-                       r.left < window.innerWidth  && r.right  > 0;
-    const overlaps = !(x + w < r.left || x > r.right || y + h < r.top || y > r.bottom);
-    if (overlaps) {
-      selected.add(cardEl.dataset.card);
-    } else if (!e.ctrlKey && !e.metaKey && inViewport) {
-      selected.delete(cardEl.dataset.card); // 画面外カードは除外しない
-    }
+    const r  = cardEl.getBoundingClientRect();
+    const ct = r.top    + window.scrollY;
+    const cb = r.bottom + window.scrollY;
+    const cl = r.left   + window.scrollX;
+    const cr = r.right  + window.scrollX;
+    const overlaps = !(x + w < cl || x > cr || y + h < ct || y > cb);
+    if (overlaps) selected.add(cardEl.dataset.card);
+    else if (!ctrlOrMeta) selected.delete(cardEl.dataset.card);
   });
   applySelection();
   updateSelBar();
+}
+
+document.addEventListener('mousemove', e => {
+  if (!rb.active || dragInfo) return;
+  rbApply(e.clientX, e.clientY, e.ctrlKey || e.metaKey);
 });
+
+// スクロール中もラバーバンドを追従・選択を更新（マウスが静止していても正しく機能させる）
+window.addEventListener('scroll', () => {
+  if (!rb.active) return;
+  rbApply(rb.lastCX, rb.lastCY, rb.lastCtrl);
+}, { passive: true });
 
 document.addEventListener('mouseup', () => {
   if (!rb.active) return;
