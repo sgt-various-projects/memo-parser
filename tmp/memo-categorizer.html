@@ -337,6 +337,73 @@
 
     .hidden { display: none !important; }
 
+    /* ===== タブ ===== */
+    .tab-bar {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 0;
+      border-bottom: 2px solid #dde1e7;
+      padding-bottom: 0;
+    }
+    .tab-btn {
+      padding: 8px 22px;
+      border: none;
+      background: none;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #7f8c8d;
+      cursor: pointer;
+      border-radius: 8px 8px 0 0;
+      border: 1.5px solid transparent;
+      border-bottom: none;
+      margin-bottom: -2px;
+      transition: color 0.15s, background 0.15s;
+    }
+    .tab-btn:hover { color: #2980b9; background: #f0f6fd; }
+    .tab-btn.active {
+      color: #2c3e50;
+      background: #fff;
+      border-color: #dde1e7;
+      border-bottom-color: #fff;
+    }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .tab-content > .panel:first-child { border-radius: 0 10px 10px 10px; margin-top: 0; }
+
+    /* ===== Org File Editor ===== */
+    .org-label {
+      font-size: 0.8rem; font-weight: 700; color: #7f8c8d;
+      margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.06em; display: block;
+    }
+    .org-outline-item {
+      padding: 3px 8px; border-radius: 4px; cursor: pointer;
+      font-size: 0.8rem; color: #2c3e50;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      transition: background 0.1s;
+      font-family: 'Menlo', 'Consolas', 'Courier New', monospace;
+    }
+    .org-outline-item:hover { background: #ebf5fb; color: #2980b9; }
+    .org-outline-item.lv1 { font-weight: 700; }
+    .org-outline-item.lv2 { padding-left: 20px; font-weight: 600; }
+    .org-outline-item.lv3 { padding-left: 36px; color: #7f8c8d; }
+    .org-outline-item.lv4 { padding-left: 52px; color: #95a5a6; }
+    .org-outline-item.selected { background: #d6eaf8 !important; color: #1a5276; font-weight: 700; }
+    .org-form-ta {
+      width: 100%; padding: 10px 12px;
+      border: 1.5px solid #dde1e7; border-radius: 8px;
+      font-family: 'Menlo', 'Consolas', 'Courier New', monospace;
+      font-size: 0.85rem; line-height: 1.6; resize: vertical;
+      background: #fafbfc; color: #2c3e50;
+    }
+    .org-form-ta:focus { outline: none; border-color: #3498db; box-shadow: 0 0 0 3px rgba(52,152,219,0.15); }
+    .org-path-input {
+      flex: 1; padding: 8px 12px;
+      border: 1.5px solid #dde1e7; border-radius: 8px;
+      font-family: 'Menlo', 'Consolas', 'Courier New', monospace;
+      font-size: 0.85rem; background: #fafbfc; color: #2c3e50;
+    }
+    .org-path-input:focus { outline: none; border-color: #3498db; box-shadow: 0 0 0 3px rgba(52,152,219,0.15); }
+
     /* ⑭ Sticky column header bar */
     #sticky-bar-outer {
       position: fixed;
@@ -441,48 +508,157 @@
 <div class="wrap">
   <h1>メモ整理アプリ</h1>
 
-  <!-- 入力パネル -->
-  <div class="panel">
-    <div class="input-row">
-      <div class="input-group">
-        <label>メモ（空行で区切る）</label>
-        <textarea id="memo-input"
-          placeholder="あいうえお&#10;かきくけこ&#10;&#10;さしすせそ&#10;たちつてと&#10;&#10;&#10;なにぬねの"></textarea>
-        <p class="hint">1行以上の空行をメモの区切りとして認識します</p>
-      </div>
-      <div class="input-group narrow">
-        <label>カテゴリ（改行区切り）</label>
-        <textarea id="category-input"
-          placeholder="カテゴリA&#10;カテゴリB&#10;カテゴリC">DONE
+  <!-- タブバー -->
+  <div class="tab-bar">
+    <button class="tab-btn active" data-tab="main">メモ整理</button>
+    <button class="tab-btn" data-tab="org">Orgファイル編集</button>
+    <button class="tab-btn" data-tab="agg">Org集約</button>
+  </div>
+
+  <!-- ===== タブ: メモ整理 ===== -->
+  <div id="tab-main" class="tab-content active">
+
+    <!-- 入力パネル -->
+    <div class="panel">
+      <div class="input-row">
+        <div class="input-group">
+          <label>メモ（空行で区切る）</label>
+          <textarea id="memo-input"
+            placeholder="あいうえお&#10;かきくけこ&#10;&#10;さしすせそ&#10;たちつてと&#10;&#10;&#10;なにぬねの"></textarea>
+          <p class="hint">1行以上の空行をメモの区切りとして認識します</p>
+        </div>
+        <div class="input-group narrow">
+          <label>カテゴリ（改行区切り）</label>
+          <textarea id="category-input"
+            placeholder="カテゴリA&#10;カテゴリB&#10;カテゴリC">DONE
 除外</textarea>
-        <p class="hint">空行は無視されます</p>
+          <p class="hint">空行は無視されます</p>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-blue" id="process-btn">分類開始</button>
       </div>
     </div>
-    <div class="btn-row">
-      <button class="btn btn-blue" id="process-btn">分類開始</button>
-    </div>
-  </div>
 
-  <!-- ボードパネル -->
-  <div class="panel hidden" id="board-panel">
-    <div class="sel-bar" id="sel-bar">
-      クリック: 選択 / Ctrl+クリック: 複数選択 / 空白ドラッグ: 範囲選択 / カードドラッグ: 移動 / ダブルクリック: 編集
+    <!-- ボードパネル -->
+    <div class="panel hidden" id="board-panel">
+      <div class="sel-bar" id="sel-bar">
+        クリック: 選択 / Ctrl+クリック: 複数選択 / 空白ドラッグ: 範囲選択 / カードドラッグ: 移動 / ダブルクリック: 編集
+      </div>
+      <div class="board-wrap">
+        <div class="board" id="board"></div>
+      </div>
     </div>
-    <div class="board-wrap">
-      <div class="board" id="board"></div>
-    </div>
-  </div>
 
-  <!-- Exportパネル -->
-  <div class="panel hidden" id="export-panel">
-    <div class="btn-row" style="margin-bottom:14px;">
-      <button class="btn btn-green"  id="export-btn">Export</button>
-      <!-- 仕様⑧: 紫色ボタンで非活性感を解消 -->
-      <button class="btn btn-purple" id="export-org-btn">Export org-file</button>
+    <!-- Exportパネル -->
+    <div class="panel hidden" id="export-panel">
+      <div class="btn-row" style="margin-bottom:14px;">
+        <button class="btn btn-green"  id="export-btn">Export</button>
+        <button class="btn btn-purple" id="export-org-btn">Export org-file</button>
+      </div>
+      <textarea class="export-output" id="export-output" readonly
+        placeholder="「Export」ボタンを押して出力"></textarea>
     </div>
-    <textarea class="export-output" id="export-output" readonly
-      placeholder="「Export」ボタンを押して出力"></textarea>
-  </div>
+
+  </div><!-- /tab-main -->
+
+  <!-- ===== タブ: Orgファイル編集 ===== -->
+  <div id="tab-org" class="tab-content">
+
+    <!-- ファイルパス -->
+    <div class="panel">
+      <div style="margin-bottom:14px;">
+        <label class="org-label">ファイルパス</label>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <input type="text" id="org-file-path" class="org-path-input">
+          <button class="btn btn-blue" id="org-load-btn" style="white-space:nowrap;flex-shrink:0;">読み込み</button>
+        </div>
+      </div>
+
+      <!-- アウトライン + ファイル内容 -->
+      <div style="display:flex;gap:14px;margin-bottom:14px;align-items:stretch;">
+        <div style="flex:0 0 220px;display:flex;flex-direction:column;">
+          <label class="org-label">アウトライン</label>
+          <div id="org-outline"
+            style="flex:1;border:1.5px solid #dde1e7;border-radius:8px;background:#fafbfc;min-height:480px;overflow-y:auto;padding:6px;">
+          </div>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;">
+          <label class="org-label">ファイル内容</label>
+          <textarea id="org-form2" class="org-form-ta" style="height:480px;flex:1;"
+            placeholder="ファイルを読み込むと内容が表示されます"></textarea>
+        </div>
+      </div>
+
+      <!-- 切り取り・貼り戻しボタン -->
+      <div class="btn-row" style="margin-bottom:14px;">
+        <button class="btn btn-blue"  id="org-cut-btn">メモに切り取り</button>
+        <button class="btn btn-green" id="org-paste-btn">Export内容を貼り戻し</button>
+      </div>
+
+      <!-- 出力 -->
+      <div style="margin-bottom:14px;">
+        <label class="org-label">出力</label>
+        <textarea id="org-form3" class="org-form-ta" style="height:480px;"
+          placeholder="「Export内容を貼り戻し」を押すと内容が出力されます"></textarea>
+      </div>
+
+      <!-- 上書き保存 -->
+      <div class="btn-row">
+        <button class="btn btn-purple" id="org-save-btn">ファイル上書き保存</button>
+      </div>
+    </div>
+
+  </div><!-- /tab-org -->
+
+  <!-- ===== タブ: Org集約 ===== -->
+  <div id="tab-agg" class="tab-content">
+    <div class="panel">
+
+      <!-- ファイルパス -->
+      <div style="margin-bottom:14px;">
+        <label class="org-label">ファイルパス</label>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <input type="text" id="agg-file-path" class="org-path-input">
+          <button class="btn btn-blue" id="agg-load-btn" style="white-space:nowrap;flex-shrink:0;">読み込み</button>
+        </div>
+      </div>
+
+      <!-- アウトライン + ファイル内容 -->
+      <div style="display:flex;gap:14px;margin-bottom:14px;align-items:stretch;">
+        <div style="flex:0 0 220px;display:flex;flex-direction:column;">
+          <label class="org-label">アウトライン（クリックで選択）</label>
+          <div id="agg-outline"
+            style="flex:1;border:1.5px solid #dde1e7;border-radius:8px;background:#fafbfc;min-height:480px;overflow-y:auto;padding:6px;">
+          </div>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;">
+          <label class="org-label">ファイル内容</label>
+          <textarea id="agg-form-content" class="org-form-ta" style="height:480px;flex:1;"
+            placeholder="ファイルを読み込むと内容が表示されます" readonly></textarea>
+        </div>
+      </div>
+
+      <!-- 集約ボタン -->
+      <div class="btn-row" style="margin-bottom:14px;">
+        <button class="btn btn-blue" id="agg-run-btn">集約</button>
+      </div>
+
+      <!-- 出力 -->
+      <div style="margin-bottom:14px;">
+        <label class="org-label">出力</label>
+        <textarea id="agg-output" class="org-form-ta" style="height:480px;" readonly
+          placeholder="アウトラインを選択して「集約」を押すと結果が表示されます"></textarea>
+      </div>
+
+      <!-- 上書き保存 -->
+      <div class="btn-row">
+        <button class="btn btn-purple" id="agg-save-btn">ファイル上書き保存</button>
+      </div>
+
+    </div>
+  </div><!-- /tab-agg -->
+
 </div>
 
 <!-- 仕様②: ラバーバンド選択用オーバーレイ -->
@@ -1013,16 +1189,32 @@ window.addEventListener('keydown', e => {
 })();
 
 document.getElementById('process-btn').addEventListener('click', () => {
-  const memos = parseMemos(document.getElementById('memo-input').value);
+  const rawMemo = document.getElementById('memo-input').value;
   const catText = document.getElementById('category-input').value;
   const cats  = parseCategories(catText);
-  if (!memos.length) { alert('メモを入力してください'); return; }
-  localStorage.setItem('memo-app-categories', catText); // カテゴリを保存
+  if (!rawMemo.trim()) { alert('メモを入力してください'); return; }
+  localStorage.setItem('memo-app-categories', catText);
+
+  // 最初の非空行が "** <text>" の場合、<text> を最初のカラム名に使う（0文字なら「未整理」のまま）
+  let firstColName = '未整理';
+  let memoText = rawMemo;
+  const rawLines = rawMemo.split('\n');
+  const firstNonEmptyIdx = rawLines.findIndex(l => l.trim() !== '');
+  if (firstNonEmptyIdx !== -1) {
+    const firstLine = rawLines[firstNonEmptyIdx];
+    const m = firstLine.match(/^\*\* ?(.*)$/);
+    if (m) {
+      const extracted = m[1].trim();
+      if (extracted) firstColName = extracted;
+      memoText = rawLines.slice(firstNonEmptyIdx + 1).join('\n');
+    }
+  }
+  const memos = parseMemos(memoText);
 
   _n = 0;
   selected.clear();
   columns = [
-    { id: uid(), name: '未整理', cards: memos.map(m => ({ id: uid(), content: m })) },
+    { id: uid(), name: firstColName, cards: memos.map(m => ({ id: uid(), content: m })) },
     ...cats.map(name  => ({ id: uid(), name, cards: [] }))
   ];
 
@@ -1086,6 +1278,437 @@ window.addEventListener('scroll', updateStickyVisibility, { passive: true });
 document.getElementById('reload-btn').addEventListener('click', () => {
   if (confirm('ページをリロードします。\n入力・分類データは全て失われます。よろしいですか？')) {
     window.location.reload();
+  }
+});
+
+// ===== タブ切り替え =====
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const target = btn.dataset.tab;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + target).classList.add('active');
+  });
+});
+
+// ===== Org File Editor =====
+
+let orgFileHandle    = null;
+let orgOriginalContent = '';   // ファイル読み込み時の原文（ボタン4の行数比較用）
+let orgCutInsertPos  = null;   // ボタン2で切り取った位置（フォーム2上の文字インデックス）
+let orgCutText       = '';     // ボタン2で切り取ったテキスト
+
+function orgCountNonBlank(text) {
+  return text.split('\n').filter(l => l.trim() !== '').length;
+}
+
+function orgIsOutline(line) {
+  return /^\*+/.test(line.trim());
+}
+
+// テキスト内のアウトライン行を {lineIndex, charPos, text, level} の配列で返す
+function orgGetOutlines(content) {
+  const lines = content.split('\n');
+  const result = [];
+  let charPos = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (orgIsOutline(line)) {
+      const lv = (line.match(/^(\*+)/) || ['', ''])[1].length;
+      result.push({ lineIndex: i, charPos, text: line, level: lv });
+    }
+    charPos += line.length + 1; // +1 for \n
+  }
+  return result;
+}
+
+// テキストエリアを指定文字位置にスクロール
+function orgScrollTo(ta, charPos) {
+  const full = ta.value;
+  ta.value = full.substring(0, charPos);
+  ta.scrollTop = ta.scrollHeight;
+  const top = ta.scrollTop;
+  ta.value = full;
+  ta.scrollTop = top;
+  ta.setSelectionRange(charPos, charPos);
+  ta.focus();
+}
+
+// アウトライン一覧を再描画
+function orgRenderOutline(content) {
+  const el = document.getElementById('org-outline');
+  el.innerHTML = '';
+  const outlines = orgGetOutlines(content);
+  for (const item of outlines) {
+    const div = document.createElement('div');
+    div.className = 'org-outline-item lv' + Math.min(item.level, 4);
+    div.textContent = item.text;
+    div.title = item.text;
+    div.addEventListener('click', () => {
+      const ta = document.getElementById('org-form2');
+      orgScrollTo(ta, item.charPos);
+    });
+    el.appendChild(div);
+  }
+}
+
+// 読み込みボタン: ファイル選択ダイアログを開いて内容を表示
+async function orgPickAndLoad() {
+  if ('showOpenFilePicker' in window) {
+    try {
+      const [handle] = await window.showOpenFilePicker();
+      orgFileHandle = handle;
+      const file = await handle.getFile();
+      orgOriginalContent = await file.text();
+      document.getElementById('org-file-path').value =
+        document.getElementById('org-file-path').value.trim() || file.name;
+    } catch (e) {
+      if (e.name !== 'AbortError') alert('ファイルの読み込みに失敗しました: ' + e.message);
+      return false;
+    }
+  } else {
+    await new Promise(resolve => {
+      const inp = document.createElement('input');
+      inp.type = 'file';
+      inp.onchange = async () => {
+        const file = inp.files[0];
+        if (!file) { resolve(); return; }
+        orgFileHandle = null;
+        orgOriginalContent = await file.text();
+        document.getElementById('org-file-path').value =
+          document.getElementById('org-file-path').value.trim() || file.name;
+        resolve();
+      };
+      inp.click();
+    });
+    if (!orgOriginalContent) return false;
+  }
+  return true;
+}
+
+document.getElementById('org-load-btn').addEventListener('click', async () => {
+  if (!await orgPickAndLoad()) return;
+  const ta = document.getElementById('org-form2');
+  ta.value = orgOriginalContent;
+  orgRenderOutline(orgOriginalContent);
+  orgCutInsertPos = null;
+  orgCutText = '';
+  document.getElementById('org-form3').value = '';
+});
+
+// フォーム2が直接編集されたらアウトラインを更新
+document.getElementById('org-form2').addEventListener('input', () => {
+  orgRenderOutline(document.getElementById('org-form2').value);
+});
+
+// ボタン2: カーソル位置のアウトラインセクションをメモ入力に切り取り
+document.getElementById('org-cut-btn').addEventListener('click', () => {
+  const ta = document.getElementById('org-form2');
+  const content = ta.value;
+  const cursor  = ta.selectionStart;
+
+  if (!content.trim()) { alert('フォーム2にファイル内容がありません'); return; }
+
+  const outlines = orgGetOutlines(content);
+  if (outlines.length === 0) { alert('アウトライン行（* または ** で始まる行）が見つかりません'); return; }
+
+  // カーソル位置を含むアウトラインを後ろから探す
+  let idx = -1;
+  for (let i = outlines.length - 1; i >= 0; i--) {
+    if (outlines[i].charPos <= cursor) { idx = i; break; }
+  }
+  if (idx === -1) { alert('カーソルをアウトラインセクション内に置いてください'); return; }
+
+  const startPos = outlines[idx].charPos;
+  const endPos   = idx + 1 < outlines.length ? outlines[idx + 1].charPos : content.length;
+  const cutText  = content.slice(startPos, endPos);
+
+  const preview = cutText.length > 300 ? cutText.slice(0, 300) + '\n...' : cutText;
+  if (!confirm('以下のセクションをメモ入力に切り取ります:\n\n' + preview + '\n\nよろしいですか？')) return;
+
+  orgCutInsertPos = startPos;
+  orgCutText      = cutText;
+
+  // フォーム2から削除
+  const newContent = content.slice(0, startPos) + content.slice(endPos);
+  ta.value = newContent;
+  orgRenderOutline(newContent);
+
+  // 既存のメモ入力フォームに貼り付け
+  document.getElementById('memo-input').value = cutText;
+  document.getElementById('memo-input').scrollIntoView({ behavior: 'smooth' });
+});
+
+// ボタン3: Export内容をフォーム2の切り取り位置に挿入 → フォーム3に出力
+document.getElementById('org-paste-btn').addEventListener('click', () => {
+  if (orgCutInsertPos === null) {
+    alert('先にボタン2でセクションを切り取ってください'); return;
+  }
+  const exportText = document.getElementById('export-output').value;
+  if (!exportText.trim()) {
+    alert('Exportフォームに内容がありません\n先に「Export」ボタンを押してください'); return;
+  }
+
+  const form2 = document.getElementById('org-form2').value;
+  const before = form2.slice(0, orgCutInsertPos);
+  const after  = form2.slice(orgCutInsertPos);
+
+  // 前後の改行を整える
+  let insert = exportText;
+  if (before.length > 0 && !before.endsWith('\n')) insert = '\n' + insert;
+  if (after.length > 0 && !insert.endsWith('\n')) insert = insert + '\n';
+
+  const form3Content = before + insert + after;
+  document.getElementById('org-form3').value = form3Content;
+
+  // 行数チェック
+  const cutNB  = orgCountNonBlank(orgCutText);
+  const pasteNB = exportText.split('\n')
+    .filter(l => l.trim() !== '' && !orgIsOutline(l))
+    .length;
+  const ok = cutNB === pasteNB;
+
+  alert(
+    '行数確認:\n' +
+    '切り取り（空白以外）: ' + cutNB + ' 行\n' +
+    '貼り付け（アウトライン除く空白以外）: ' + pasteNB + ' 行\n\n' +
+    '結果: ' + (ok ? '✓ 一致（正常）' : '✗ 不一致（確認してください）')
+  );
+});
+
+// ===== Org 集約 =====
+
+let aggFileHandle      = null;
+let aggOriginalContent = '';
+let aggSelectedCharPos = null;
+
+function aggRenderOutline(content) {
+  const el = document.getElementById('agg-outline');
+  el.innerHTML = '';
+  const outlines = orgGetOutlines(content);
+  for (const item of outlines) {
+    const div = document.createElement('div');
+    div.className = 'org-outline-item lv' + Math.min(item.level, 4);
+    div.textContent = item.text;
+    div.title = item.text;
+    div.dataset.charpos = String(item.charPos);
+    div.addEventListener('click', () => {
+      el.querySelectorAll('.org-outline-item').forEach(d => d.classList.remove('selected'));
+      div.classList.add('selected');
+      aggSelectedCharPos = item.charPos;
+    });
+    el.appendChild(div);
+  }
+}
+
+function orgAggregateContent(content, selectedCharPos) {
+  const lines    = content.split('\n');
+  const outlines = orgGetOutlines(content);
+
+  const selIdx = outlines.findIndex(o => o.charPos === selectedCharPos);
+  if (selIdx === -1) return null;
+
+  const sel      = outlines[selIdx];
+  const selLevel = sel.level;
+
+  // 選択アウトラインのスコープ終端（同レベル以上の次のアウトライン行）
+  let scopeEndLine = lines.length;
+  for (let i = selIdx + 1; i < outlines.length; i++) {
+    if (outlines[i].level <= selLevel) { scopeEndLine = outlines[i].lineIndex; break; }
+  }
+
+  // 直下の子アウトライン（level = selLevel + 1）を取得
+  const children = outlines.filter(o =>
+    o.level === selLevel + 1 &&
+    o.lineIndex > sel.lineIndex &&
+    o.lineIndex < scopeEndLine
+  );
+  if (children.length === 0) return content;
+
+  // ヘッダー文字列でグルーピング（出現順を保持）
+  const groupMap = new Map();
+  const order    = [];
+  for (let i = 0; i < children.length; i++) {
+    const child   = children[i];
+    const header  = lines[child.lineIndex];
+    const nextEnd = i + 1 < children.length ? children[i + 1].lineIndex : scopeEndLine;
+    const block   = lines.slice(child.lineIndex + 1, nextEnd);
+    if (!groupMap.has(header)) { groupMap.set(header, []); order.push(header); }
+    groupMap.get(header).push(block);
+  }
+
+  // 選択アウトライン行〜最初の子の前までをプレフィックスとして保持
+  const firstChildLine = children[0].lineIndex;
+  const prefixLines    = lines.slice(sel.lineIndex, firstChildLine);
+
+  // 集約済みの子セクションを構築
+  const aggregated = [...prefixLines];
+  for (const header of order) {
+    const blocks = groupMap.get(header);
+    aggregated.push(header);
+
+    // 各ブロックの末尾空行をトリム
+    const trimmed = blocks.map(b => {
+      let end = b.length;
+      while (end > 0 && b[end - 1].trim() === '') end--;
+      return b.slice(0, end);
+    });
+
+    // ブロック間に2空行を挿入して結合
+    for (let i = 0; i < trimmed.length; i++) {
+      if (i > 0) aggregated.push('', '');
+      aggregated.push(...trimmed[i]);
+    }
+    aggregated.push(''); // セクション末尾の1空行
+  }
+
+  const beforeScope = lines.slice(0, sel.lineIndex);
+  const afterScope  = lines.slice(scopeEndLine);
+  return [...beforeScope, ...aggregated, ...afterScope].join('\n');
+}
+
+async function aggPickAndLoad() {
+  if ('showOpenFilePicker' in window) {
+    try {
+      const [handle] = await window.showOpenFilePicker();
+      aggFileHandle = handle;
+      const file = await handle.getFile();
+      aggOriginalContent = await file.text();
+      document.getElementById('agg-file-path').value =
+        document.getElementById('agg-file-path').value.trim() || file.name;
+    } catch (e) {
+      if (e.name !== 'AbortError') alert('ファイルの読み込みに失敗しました: ' + e.message);
+      return false;
+    }
+  } else {
+    await new Promise(resolve => {
+      const inp = document.createElement('input');
+      inp.type = 'file';
+      inp.onchange = async () => {
+        const file = inp.files[0];
+        if (!file) { resolve(); return; }
+        aggFileHandle = null;
+        aggOriginalContent = await file.text();
+        document.getElementById('agg-file-path').value =
+          document.getElementById('agg-file-path').value.trim() || file.name;
+        resolve();
+      };
+      inp.click();
+    });
+    if (!aggOriginalContent) return false;
+  }
+  return true;
+}
+
+document.getElementById('agg-load-btn').addEventListener('click', async () => {
+  if (!await aggPickAndLoad()) return;
+  document.getElementById('agg-form-content').value = aggOriginalContent;
+  aggRenderOutline(aggOriginalContent);
+  aggSelectedCharPos = null;
+  document.getElementById('agg-output').value = '';
+});
+
+document.getElementById('agg-run-btn').addEventListener('click', () => {
+  if (aggSelectedCharPos === null) {
+    alert('左のアウトライン一覧からアウトラインを選択してください'); return;
+  }
+  const content = document.getElementById('agg-form-content').value;
+  if (!content.trim()) { alert('ファイル内容がありません'); return; }
+
+  const result = orgAggregateContent(content, aggSelectedCharPos);
+  if (result === null) { alert('選択したアウトラインが見つかりません'); return; }
+  document.getElementById('agg-output').value = result;
+});
+
+document.getElementById('agg-save-btn').addEventListener('click', async () => {
+  const output = document.getElementById('agg-output').value;
+  if (!output.trim()) { alert('出力フォームに内容がありません'); return; }
+
+  const origAllLines = aggOriginalContent.split('\n').length;
+  const newAllLines  = output.split('\n').length;
+  const origNB       = orgCountNonBlank(aggOriginalContent);
+  const newNB        = orgCountNonBlank(output);
+
+  const confirmed = confirm(
+    'ファイル上書き確認:\n\n' +
+    '元ファイル  全行数: ' + origAllLines + ' 行  /  空白以外: ' + origNB + ' 行\n' +
+    '集約後      全行数: ' + newAllLines  + ' 行  /  空白以外: ' + newNB  + ' 行\n\n' +
+    'OKを押すとファイルを上書き保存します。'
+  );
+  if (!confirmed) return;
+
+  if (aggFileHandle) {
+    try {
+      const writable = await aggFileHandle.createWritable();
+      await writable.write(output);
+      await writable.close();
+      aggOriginalContent = output;
+      document.getElementById('agg-form-content').value = output;
+      aggRenderOutline(output);
+      document.getElementById('agg-output').value = '';
+      alert('ファイルを上書き保存しました');
+    } catch (e) {
+      alert('ファイルの保存に失敗しました: ' + e.message);
+    }
+  } else {
+    const rawPath = document.getElementById('agg-file-path').value;
+    const fileName = rawPath.replace(/["]/g, '').split(/[\\\/]/).pop() || 'output.org';
+    const blob = new Blob([output], { type: 'text/plain;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+    aggOriginalContent = output;
+    document.getElementById('agg-form-content').value = output;
+    aggRenderOutline(output);
+    document.getElementById('agg-output').value = '';
+  }
+});
+
+// ボタン4: フォーム3の内容でファイルを上書き保存
+document.getElementById('org-save-btn').addEventListener('click', async () => {
+  const form3Content = document.getElementById('org-form3').value;
+  if (!form3Content.trim()) { alert('フォーム3に内容がありません'); return; }
+
+  const origNB  = orgCountNonBlank(orgOriginalContent);
+  const form3NB = orgCountNonBlank(form3Content);
+  const ok = origNB === form3NB;
+
+  const confirmed = confirm(
+    'ファイル上書き確認:\n\n' +
+    '元ファイルの空白以外の行数: ' + origNB + ' 行\n' +
+    'フォーム3の空白以外の行数:  ' + form3NB + ' 行\n\n' +
+    '結果: ' + (ok ? '✓ 一致' : '✗ 不一致（注意）') + '\n\n' +
+    'OKを押すとファイルを上書き保存します。'
+  );
+  if (!confirmed) return;
+
+  if (orgFileHandle) {
+    try {
+      const writable = await orgFileHandle.createWritable();
+      await writable.write(form3Content);
+      await writable.close();
+      orgOriginalContent = form3Content; // 保存後に原文を更新
+      alert('ファイルを上書き保存しました');
+    } catch (e) {
+      alert('ファイルの保存に失敗しました: ' + e.message);
+    }
+  } else {
+    // File System Access API が使えない場合はダウンロード
+    const fileName = document.getElementById('org-file-path').value || 'output.org';
+    const blob = new Blob([form3Content], { type: 'text/plain;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+    orgOriginalContent = form3Content;
   }
 });
 </script>
