@@ -453,7 +453,8 @@
       <div class="input-group narrow">
         <label>カテゴリ（改行区切り）</label>
         <textarea id="category-input"
-          placeholder="カテゴリA&#10;カテゴリB&#10;カテゴリC"></textarea>
+          placeholder="カテゴリA&#10;カテゴリB&#10;カテゴリC">DONE
+除外</textarea>
         <p class="hint">空行は無視されます</p>
       </div>
     </div>
@@ -687,9 +688,9 @@ function makeColumn(col) {
 
   for (const card of col.cards) cardsEl.appendChild(makeCard(card));
 
-  // 空白クリックで選択解除
+  // 空白クリックで選択解除（ドラッグ中は無視）
   cardsEl.addEventListener('click', e => {
-    if (e.target === cardsEl) { selected.clear(); applySelection(); updateSelBar(); }
+    if (e.target === cardsEl && !dragInfo) { selected.clear(); applySelection(); updateSelBar(); }
   });
   // ドラッグ受け入れ
   cardsEl.addEventListener('dragover', e => {
@@ -717,9 +718,9 @@ function makeCard(card) {
   el.dataset.card = card.id;
   el.draggable = true;
 
-  // クリック: 選択（編集モード中は無視）
+  // クリック: 選択（編集モード中・ドラッグ中は無視）
   el.addEventListener('click', e => {
-    if (el.classList.contains('editing')) return;
+    if (el.classList.contains('editing') || dragInfo) return;
     e.stopPropagation();
     if (e.ctrlKey || e.metaKey) {
       selected.has(card.id) ? selected.delete(card.id) : selected.add(card.id);
@@ -915,7 +916,7 @@ function updateSelBar() {
 // ボードの空白エリアをドラッグすると選択矩形が表示され、
 // 矩形と重なったカードが選択される
 document.getElementById('board').addEventListener('mousedown', e => {
-  if (e.button !== 0) return;
+  if (e.button !== 0 || dragInfo) return; // ドラッグ中はラバーバンド開始しない
   // カード・ヘッダー・ボタン上のクリックは除外
   let t = e.target;
   while (t && t.id !== 'board') {
@@ -936,7 +937,7 @@ document.getElementById('board').addEventListener('mousedown', e => {
 });
 
 document.addEventListener('mousemove', e => {
-  if (!rb.active) return;
+  if (!rb.active || dragInfo) return; // ドラッグ中はラバーバンド描画しない
   const x = Math.min(e.clientX, rb.x0);
   const y = Math.min(e.clientY, rb.y0);
   const w = Math.abs(e.clientX - rb.x0);
@@ -947,11 +948,17 @@ document.addEventListener('mousemove', e => {
   rbEl.style.height = h + 'px';
 
   // ビューポート座標で矩形と各カードの重なりを判定
+  // ビューポート外にスクロールしたカードは選択状態を変更しない
   document.querySelectorAll('.card:not(.editing)').forEach(cardEl => {
     const r = cardEl.getBoundingClientRect();
+    const inViewport = r.top < window.innerHeight && r.bottom > 0 &&
+                       r.left < window.innerWidth  && r.right  > 0;
     const overlaps = !(x + w < r.left || x > r.right || y + h < r.top || y > r.bottom);
-    if (overlaps) selected.add(cardEl.dataset.card);
-    else if (!e.ctrlKey && !e.metaKey) selected.delete(cardEl.dataset.card);
+    if (overlaps) {
+      selected.add(cardEl.dataset.card);
+    } else if (!e.ctrlKey && !e.metaKey && inViewport) {
+      selected.delete(cardEl.dataset.card); // 画面外カードは除外しない
+    }
   });
   applySelection();
   updateSelBar();
@@ -976,16 +983,26 @@ window.addEventListener('keydown', e => {
 // ===== イベントバインディング =====
 
 // 分類開始ボタン
+// ページ読み込み時: 前回のカテゴリを localStorage から復元
+(function restoreCategories() {
+  const saved = localStorage.getItem('memo-app-categories');
+  if (saved !== null) {
+    document.getElementById('category-input').value = saved;
+  }
+})();
+
 document.getElementById('process-btn').addEventListener('click', () => {
   const memos = parseMemos(document.getElementById('memo-input').value);
-  const cats  = parseCategories(document.getElementById('category-input').value);
+  const catText = document.getElementById('category-input').value;
+  const cats  = parseCategories(catText);
   if (!memos.length) { alert('メモを入力してください'); return; }
+  localStorage.setItem('memo-app-categories', catText); // カテゴリを保存
 
   _n = 0;
   selected.clear();
   columns = [
     { id: uid(), name: '未整理', cards: memos.map(m => ({ id: uid(), content: m })) },
-    ...cats.map(name => ({ id: uid(), name, cards: [] }))
+    ...cats.map(name  => ({ id: uid(), name, cards: [] }))
   ];
 
   render();
