@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>メモ整理ツール</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html {
+      /* アウトライン一覧 ⇄ テキストモード/GUIモードの間をスクロールで区切りよく移動させる */
+      /* mandatory だと少しのスクロールでも即座に隣のエリアへ移動してしまうため、
+         隣のエリアがある程度多く表示されたときだけ自動スクロールする proximity にする */
+      scroll-snap-type: y proximity;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Sans', 'Yu Gothic UI', sans-serif;
+      background: #454749;
+      color: #e8eaed;
+      min-height: 100vh;
+      padding: 0;
+    }
+
+    /* ===== 1行ヘッダー ===== */
+    .app-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: #454749;
+      padding: 5px 12px;
+      margin-bottom: 0;
+      border-bottom: 1px solid #9aa0a6;
+    }
+    .app-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #e8eaed;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+    .app-notice {
+      font-size: 0.72rem;
+      color: #fdd663;
+      flex: 1;
+    }
+    .btn-reload {
+      background: transparent;
+      border: 1.5px solid #9aa0a6;
+      color: #9aa0a6;
+      font-size: 0.72rem;
+      padding: 3px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: 600;
+      white-space: nowrap;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .btn-reload:hover { border-color: #ea4335; color: #ea4335; }
+
+    .wrap { width: 100%; }
+
+    .panel {
+      background: #454749;
+      padding: 8px 0;
+      margin-bottom: 0;
+      border-bottom: 1px solid #9aa0a6;
+    }
+
+    .org-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #9aa0a6;
+      margin-bottom: 5px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .org-split-left .org-label,
+    .org-split-right .org-label {
+      padding-left: 12px;
+      padding-right: 12px;
+    }
+    .org-label.org-section-label-2row {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 4px;
+    }
+    .org-section-tabs-row,
+    .org-section-controls-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .linecount {
+      font-size: 0.72rem;
+      color: #9aa0a6;
+      font-weight: normal;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+    .scroll-btns { margin-left: auto; display: flex; gap: 2px; }
+    .org-outline-edit-input {
+      font-size: inherit;
+      font-family: inherit;
+      font-weight: inherit;
+      color: inherit;
+      background: transparent;
+      border: none;
+      border-bottom: 1.5px solid #8ab4f8;
+      outline: none;
+      padding: 0;
+      width: 100%;
+      min-width: 60px;
+    }
+    .btn-scroll {
+      background: none;
+      border: 1px solid #9aa0a6;
+      border-radius: 3px;
+      color: #9aa0a6;
+      font-size: 0.65rem;
+      cursor: pointer;
+      padding: 1px 5px;
+      line-height: 1.4;
+      font-weight: normal;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+    .btn-scroll:hover { background: #454749; border-color: #9aa0a6; color: #e8eaed; }
+    #line-num-toggle-btn.active { color: #8ab4f8; border-color: #8ab4f8; background: rgba(138,180,248,0.1); }
+    #section-card-mode-btn.active { color: #8ab4f8; border-color: #8ab4f8; background: rgba(138,180,248,0.1); }
+    .icon-mono { filter: grayscale(1); }
+    .org-section-tabs { display: flex; gap: 4px; }
+    .org-section-tab {
+      background: none;
+      border: 1px solid #9aa0a6;
+      border-radius: 4px;
+      color: #9aa0a6;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      cursor: pointer;
+    }
+    .org-section-tab:hover:not(.active) { background: #454749; border-color: #9aa0a6; color: #e8eaed; }
+    .org-section-tab.active { color: #8ab4f8; border-color: #8ab4f8; background: rgba(138,180,248,0.1); }
+    .org-section-current-heading {
+      font-family: 'Menlo', 'Consolas', monospace;
+      font-size: 0.8rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      color: #e8eaed;
+      background: #000000;
+      border-bottom: 1px solid #3c4043;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .org-section-current-heading:empty { display: none; }
+    .org-section-current-heading.org-lv1 { color: #81c995; }
+    .org-section-current-heading.org-lv2 { color: #4ecdc4; }
+    .org-section-current-heading.org-lv3 { color: #8ab4f8; }
+    .org-section-current-heading.org-lv4 { color: #c58af9; }
+    .hide-line-nums .cmp-num {
+      flex: 0 0 0px;
+      min-width: 0;
+      padding: 0;
+      border-right: none;
+      overflow: hidden;
+    }
+
+    /* ===== ファイルパス ===== */
+    .path-row { margin-bottom: 4px; padding-left: 12px; padding-right: 12px; }
+    .path-input-row { display: flex; gap: 8px; align-items: center; }
+    .org-path-input {
+      flex: 1;
+      min-width: 0;
+      padding: 6px 10px;
+      border: 1.5px solid #9aa0a6;
+      border-radius: 7px;
+      font-family: 'Menlo', 'Consolas', monospace;
+      font-size: 0.83rem;
+      background: #000000;
+      color: #e8eaed;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .org-path-input:focus {
+      outline: none;
+      border-color: #8ab4f8;
+      box-shadow: 0 0 0 3px rgba(138,180,248,0.15);
+      text-overflow: clip;
+      white-space: nowrap;
+    }
+    .org-path-full {
+      font-family: 'Menlo', 'Consolas', monospace;
+      font-size: 0.72rem;
+      color: #9aa0a6;
+      margin-top: 3px;
+      word-break: break-all;
+      padding: 0 12px;
+      line-height: 1.4;
+      display: none;
+    }
+
+    /* ===== アウトライン + セクション内容（2カラム） ===== */
+    .org-split {
+      display: flex;
+      gap: 0;
+      flex: 1;
+      min-height: 0;
+      margin-bottom: 0;
+    }
+    .org-split-left {
+      flex: 0 0 240px;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      min-width: 0;
+      overflow: hidden;
+    }
+    .org-split-resizer {
+      flex: 0 0 9px;
+      cursor: col-resize;
+      display: flex;
+      align-items: stretch;
+      justify-content: center;
+      align-self: stretch;
+    }
+    .org-split-resizer::after {
+      content: '';
+      width: 1px;
+      background: #9aa0a6;
+      transition: background 0.15s;
+    }
+    .org-split-resizer:hover::after, .org-split-resizer.dragging::after { background: #8ab4f8; }
+    .org-split-right {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .org-outline-box {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      background: #000000;
+      padding: 2px 3px;
+      scrollbar-width: thin;
+      scrollbar-color: #28292c #9aa0a6;
+    }
+    .org-outline-search-row {
+      flex-shrink: 0;
+      padding: 12px 4px 6px;
+    }
+    .org-outline-box::-webkit-scrollbar { width: 8px; }
+    .org-outline-box::-webkit-scrollbar-track { background: #9aa0a6; }
+    .org-outline-box::-webkit-scrollbar-thumb { background: #28292c !important; border-radius: 4px; }
+    .org-outline-box::-webkit-scrollbar-thumb:hover { background: #28292c !important; filter: none !important; }
+
+    .org-form-view {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      direction: rtl;
+      background: #000000;
+      scrollbar-width: thin;
+      scrollbar-color: #28292c #9aa0a6;
+    }
+    .org-form-view::-webkit-scrollbar { width: 8px; }
+    .org-form-view::-webkit-scrollbar-track { background: #9aa0a6; }
+    .org-form-view::-webkit-scrollbar-thumb { background: #28292c !important; border-radius: 4px; }
+    .org-form-view::-webkit-scrollbar-thumb:hover { background: #28292c !important; filter: none !important; }
+
+    .org-form-placeholder {
+      direction: ltr;
+      color: #9aa0a6;
+      font-size: 0.82rem;
+      padding: 12px 14px;
+      line-height: 1.6;
+    }
+
+    /* ===== アウトラインアイテム ===== */
+    .org-outline-item {
+      display: flex;
+      align-items: center;
+      padding: 3px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.1s;
+      font-family: 'Menlo', 'Consolas', monospace;
+      line-height: 1.55;
+    }
+    .org-outline-item:hover { background: #9aa0a6; }
+    .org-outline-item.selected { background: #1a3a5c !important; }
+    .org-outline-item:focus { outline: none; box-shadow: inset 0 0 0 2px #8ab4f8; }
+    .org-outline-item-text {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 0.8rem;
+      color: #e8eaed;
+    }
+    .org-outline-count {
+      flex-shrink: 0;
+      font-size: 0.68rem;
+      color: #9aa0a6;
+      margin-left: 6px;
+      white-space: nowrap;
+    }
+    .org-outline-item.lv1 .org-outline-item-text { font-weight: 700; color: #81c995; }
+    .org-outline-item.lv2 { padding-left: 18px; }
+    .org-outline-item.lv2 .org-outline-item-text { font-weight: 600; color: #4ecdc4; }
+    .org-outline-item.lv3 { padding-left: 34px; }
+    .org-outline-item.lv3 .org-outline-item-text { color: #8ab4f8; }
+    .org-outline-item.lv4 { padding-left: 50px; }
+    .org-outline-item.lv4 .org-outline-item-text { color: #c58af9; }
+    .org-outline-item.selected .org-outline-item-text { color: #aecbfa !important; font-weight: 700; }
+    .org-outline-item:hover:not(.selected) .org-outline-item-text,
+    .org-outline-item:hover:not(.selected) .org-outline-count { color: #000000; }
+    .org-outline-item.dragging { opacity: 0.4; }
+    .org-outline-fold-toggle {
+      display: inline-block;
+      width: 14px;
+      flex-shrink: 0;
+      text-align: center;
+      cursor: pointer;
+      color: #9aa0a6;
+      user-select: none;
+    }
+    .org-outline-fold-toggle:hover { color: #e8eaed; }
+    .org-outline-fold-toggle.no-children { visibility: hidden; cursor: default; }
+
+    /* ===== ファイル振り分けリスト ===== */
+    .file-drop-list { direction: ltr; padding: 2px 0; }
+    .outline2-list { direction: ltr; padding: 2px 3px; }
+    .file-drop-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      font-size: 0.75rem;
+      color: #9aa0a6;
+      margin-bottom: 4px;
+      position: sticky;
+      top: 0;
+      background: #000000;
+    }
+    .file-drop-header span { flex: 1; min-width: 0; }
+    .file-drop-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 10px 6px 10px;
+      margin-bottom: 4px;
+    }
+    .file-drop-search-input {
+      padding: 3px 6px;
+      border: 1.5px solid #9aa0a6;
+      border-radius: 5px;
+      font-size: 0.78rem;
+      font-family: inherit;
+      background: #000000;
+      color: #e8eaed;
+      min-width: 0;
+      flex: 1;
+      max-width: 220px;
+    }
+    .file-drop-search-input::placeholder { color: #9aa0a6; }
+    .file-drop-search-input:focus { outline: none; border-color: #8ab4f8; box-shadow: 0 0 0 3px rgba(138,180,248,0.15); }
+    .file-drop-item {
+      margin: 3px 8px;
+      padding: 5px 10px;
+      border: 1.5px dashed #4a4d51;
+      border-radius: 5px;
+      font-family: 'Menlo', 'Consolas', monospace;
+      font-size: 0.78rem;
+      color: #e8eaed;
+      word-break: break-all;
+      cursor: pointer;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .file-drop-item:hover { background: #28292c; border-color: #9aa0a6; }
+    .file-drop-item.drag-over {
+      background: rgba(138,180,248,0.15);
+      border-color: #8ab4f8;
+      border-style: solid;
+    }
+    .file-drop-list.file-drop-root-over {
+      background: rgba(138,180,248,0.06);
+      box-shadow: inset 0 0 0 2px rgba(138,180,248,0.3);
+    }
+
+    /* ===== ファイル内容行ビュー ===== */
+    .cmp-view { margin: 0; direction: ltr; }
+    .cmp-row { display: flex; }
+    .cmp-row.hl-section { background: #1a3248; }
+    .cmp-row.hl-appended { background: #1e3a28; }
+    .cmp-num {
+      flex-shrink: 0;
+      min-width: 3.2em;
+      color: #9aa0a6;
+      text-align: right;
+      padding: 0 7px 0 4px;
+      border-right: 1px solid #9aa0a6;
+      margin-right: 8px;
+      user-select: none;
+      font-family: 'Menlo', 'Consolas', monospace;
+      font-size: 0.75rem;
+      line-height: 1.6;
+    }
+    .cmp-line {
+      flex: 1;
+      min-width: 0;
+      white-space: pre-wrap;
+      word-break: break-all;
+      font-family: 'Menlo', 'Consolas', monospace;
+      font-size: 0.79rem;
+      line-height: 1.6;
+      color: #e8eaed;
+    }
+    .cmp-line.org-lv1 { color: #81c995; font-weight: 700; }
+    .cmp-line.org-lv2 { color: #4ecdc4; font-weight: 600; }
+    .cmp-line.org-lv3 { color: #8ab4f8; }
+    .cmp-line.org-lv4 { color: #c58af9; }
+
+    /* ===== セクション内容: 空行区切りのカード（ドラッグしてアウトラインへ移動） ===== */
+    .cmp-card {
+      border: 1px solid transparent;
+      border-radius: 4px;
+      cursor: grab;
+      transition: border-color 0.12s, background 0.12s, opacity 0.12s;
+    }
+    .cmp-card:hover { border-color: #8ab4f8; }
+    .cmp-card.dragging { border-color: #8ab4f8; background: rgba(138,180,248,0.08); opacity: 0.5; }
+    .org-outline-item.drag-over { background: rgba(138,180,248,0.15) !important; outline: 2px dashed #8ab4f8; outline-offset: -2px; }
+
+    /* ===== カテゴリ入力 ===== */
+    .cat-row { margin-top: 10px; padding-left: 12px; padding-right: 12px; }
+    .cat-textarea {
+      width: 100%;
+      height: 64px;
+      padding: 7px 10px;
+      border: 1.5px solid #9aa0a6;
+      border-radius: 7px;
+      font-family: 'Menlo', 'Consolas', monospace;
+      font-size: 0.83rem;
+      line-height: 1.5;
+      resize: vertical;
+      background: #000000;
+      color: #e8eaed;
+    }
+    .cat-textarea::placeholder { color: #9aa0a6; }
+    .cat-textarea:focus { outline: none; border-color: #8ab4f8; box-shadow: 0 0 0 3px rgba(138,180,248,0.15); }
+
+    /* ===== ボタン ===== */
+    .btn-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; padding-left: 12px; padding-right: 12px; }
+    #org-bottom-bar { margin-top: 8px; }
+    .btn {
+      padding: 3px 10px;
+      border: 1px solid #9aa0a6;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-weight: 600;
+      transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-blue   { background: #4a4d52; color: #e8eaed; border-color: #9aa0a6; }
+    .btn-blue:hover   { background: #5f6368; color: #fff; border-color: #c4c7c5; box-shadow: 0 3px 8px rgba(0,0,0,0.35); }
+    .btn-green  { background: #4a4d52; color: #e8eaed; border-color: #9aa0a6; }
+    .btn-green:hover  { background: #5f6368; color: #fff; border-color: #c4c7c5; box-shadow: 0 3px 8px rgba(0,0,0,0.35); }
+    .btn-orange { background: #4a4d52; color: #e8eaed; border-color: #9aa0a6; }
+    .btn-orange:hover { background: #5f6368; color: #fff; border-color: #c4c7c5; box-shadow: 0 3px 8px rgba(0,0,0,0.35); }
+
+    /* ===== カード幅スライダー ===== */
+    .width-control {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 7px;
+      font-size: 0.8rem;
+      color: #9aa0a6;
+      padding-left: 12px;
+      padding-right: 12px;
+    }
+    .width-control input[type=range] { width: 150px; accent-color: #8ab4f8; }
+
+    /* ===== 選択バー ===== */
+    .sel-bar { font-size: 0.78rem; color: #9aa0a6; min-height: 1.2em; flex: 1; }
+    .sel-bar.active { color: #8ab4f8; font-weight: 600; }
+
+    /* ===== ボードパネル（内部スクロール） ===== */
+    #board-panel {
+      display: flex;
+      flex-direction: column;
+      max-height: calc(100vh - 80px);
+    }
+    #board-panel .width-control { flex-shrink: 0; }
+    #board-panel .btn-row       { flex-shrink: 0; margin-top: 12px; }
+
+    /* ===== ボード ===== */
+    .board-wrap {
+      flex: 1;
+      min-height: 0;
+      direction: rtl;
+      overflow-x: auto;
+      overflow-y: auto;
+      background: #000000;
+      scrollbar-width: thin;
+      scrollbar-color: #28292c #9aa0a6;
+    }
+    .board-wrap::-webkit-scrollbar { width: 8px; height: 10px; }
+    .board-wrap::-webkit-scrollbar-track { background: #9aa0a6; }
+    .board-wrap::-webkit-scrollbar-thumb { background: #28292c !important; border-radius: 6px; }
+    .board-wrap::-webkit-scrollbar-thumb:hover { background: #28292c !important; filter: none !important; }
+    .board {
+      direction: ltr;
+      display: flex;
+      gap: 0;
+      min-height: 120px;
+      padding: 2px;
+      align-items: flex-start;
+      --col-width: 190px;
+    }
+
+    /* ===== カラム ===== */
+    .column {
+      min-width: var(--col-width);
+      width: var(--col-width);
+      flex-shrink: 0;
+      background: #000000;
+      border-radius: 0;
+      padding: 6px;
+      display: flex;
+      flex-direction: column;
+      border: none;
+      border-right: 1px solid #9aa0a6;
+      align-self: stretch;
+    }
+    .column.last-col { border-right: none; }
+    .column-header {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #c4c7c5;
+      text-align: center;
+      padding: 3px 4px 5px;
+      border-bottom: 2px solid #9aa0a6;
+      margin-bottom: 5px;
+      cursor: text;
+      border-radius: 4px;
+      background: #000000;
+      transition: background 0.15s;
+      min-height: 1.5em;
+      word-break: break-all;
+    }
+    .column-header:focus { outline: none; background: rgba(138,180,248,0.10); border-bottom-color: #8ab4f8; }
+    .column-cards {
+      flex: 1;
+      min-height: 50px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      border-radius: 5px;
+      padding: 2px;
+      transition: background 0.15s;
+    }
+    .column-cards.drag-over {
+      background: rgba(138,180,248,0.12);
+      outline: 2px dashed rgba(138,180,248,0.45);
+      outline-offset: -2px;
+    }
+
+    /* ===== カード ===== */
+    .card {
+      background: #28292c;
+      border: 1.5px solid #9aa0a6;
+      border-radius: 6px;
+      padding: 5px 7px;
+      font-family: 'Menlo', 'Consolas', monospace;
+      font-size: 0.8rem;
+      white-space: pre-wrap;
+      cursor: grab;
+      line-height: 1.45;
+      color: #e8eaed;
+      transition: border-color 0.15s, box-shadow 0.15s, background 0.15s, opacity 0.15s;
+      word-break: break-all;
+    }
+    .card:hover:not(.editing) { border-color: #9aa0a6; box-shadow: 0 2px 7px rgba(0,0,0,0.4); }
+    .card.selected { border-color: #8ab4f8; background: #1a3a5c; box-shadow: 0 0 0 2px rgba(138,180,248,0.3); }
+    .card.being-moved { border-color: #4a90d9; background: #1a2f48; }
+    .card.dragging { opacity: 0.3; }
+    .card.editing { cursor: text; border-color: #fdd663; box-shadow: 0 0 0 2px rgba(253,214,99,0.3); white-space: pre-wrap; user-select: text; }
+
+    /* ===== カラム追加 ===== */
+    .add-col-wrap {
+      min-width: 48px;
+      width: 48px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding-top: 8px;
+      position: relative;
+      z-index: 10;
+    }
+    .btn-add-col {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: #2d2e31;
+      border: 2px dashed #9aa0a6;
+      color: #9aa0a6;
+      font-size: 1.2rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s, color 0.2s, border-color 0.2s;
+      padding: 0;
+      line-height: 1;
+      position: sticky;
+      top: 8px;
+    }
+    .btn-add-col:hover { background: #6b7280; border-color: #6b7280; border-style: solid; color: #e8eaed; }
+    .add-col-form { display: none; flex-direction: column; gap: 5px; margin-top: 7px; width: 130px; position: sticky; top: 8px; }
+    .btn-sm-ok     { background: #5f6368; color: #e8eaed; }
+    .btn-sm-cancel { background: #3c4043; color: #9aa0a6; border-color: #9aa0a6; }
+    .new-cat-input {
+      padding: 5px 7px;
+      border: 1.5px solid #9aa0a6;
+      border-radius: 5px;
+      font-size: 0.8rem;
+      font-family: inherit;
+      width: 100%;
+      background: #000000;
+      color: #e8eaed;
+    }
+    .new-cat-input:focus { outline: none; border-color: #8ab4f8; }
+    .btn-sm { padding: 4px 9px; font-size: 0.76rem; border-radius: 5px; border: 1px solid #9aa0a6; cursor: pointer; font-weight: 600; }
+
+    /* ===== ラバーバンド ===== */
+    #rubber-band {
+      position: fixed;
+      border: 1.5px dashed #8ab4f8;
+      background: rgba(138,180,248,0.07);
+      pointer-events: none;
+      z-index: 9999;
+      display: none;
+    }
+
+    /* ===== テキストモード ===== */
+    .mode-row { display: flex; align-items: center; gap: 16px; margin-bottom: 10px; }
+    .mode-label { display: flex; align-items: center; gap: 5px; font-size: 0.85rem; font-weight: 600; color: #e8eaed; cursor: pointer; }
+    .mode-label input[type=radio] { accent-color: #9aa0a6; }
+    #text-rule-minlen {
+      padding: 3px 6px;
+      border: 1.5px solid #9aa0a6;
+      border-radius: 5px;
+      font-size: 0.83rem;
+      font-family: inherit;
+      background: #000000;
+      color: #e8eaed;
+    }
+    #text-rule-minlen:focus { outline: none; border-color: #8ab4f8; box-shadow: 0 0 0 3px rgba(138,180,248,0.15); }
+    #text-rule-minlen::placeholder { color: #9aa0a6; }
+    .text-rows-container {
+      max-height: 520px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      direction: rtl;
+      background: #000000;
+      scrollbar-width: thin;
+      scrollbar-color: #28292c #9aa0a6;
+      margin-left: -6px;
+      padding-left: 4px;
+      padding-right: 12px;
+    }
+    .text-rows-container::-webkit-scrollbar { width: 8px; }
+    .text-rows-container::-webkit-scrollbar-track { background: #9aa0a6; }
+    .text-rows-container::-webkit-scrollbar-thumb { background: #28292c !important; border-radius: 4px; }
+    .text-rows-container::-webkit-scrollbar-thumb:hover { background: #28292c !important; filter: none !important; }
+    .text-row {
+      direction: ltr;
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      margin-bottom: 4px;
+    }
+    .text-col-header {
+      display: flex;
+      align-items: center;
+      padding-left: 12px;
+      padding-right: 12px;
+      margin-bottom: 3px;
+      user-select: none;
+      flex-shrink: 0;
+    }
+    .text-col-label-cat {
+      flex: 0 0 var(--text-cat-width, 120px);
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #9aa0a6;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      text-align: center;
+    }
+    .text-col-resizer {
+      flex: 0 0 8px;
+      height: 18px;
+      cursor: col-resize;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .text-col-resizer::after {
+      content: '';
+      width: 3px;
+      height: 14px;
+      background: #9aa0a6;
+      border-radius: 2px;
+      transition: background 0.15s;
+    }
+    .text-col-resizer:hover::after, .text-col-resizer.dragging::after { background: #8ab4f8; }
+    .text-col-label-content {
+      flex: 1;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #9aa0a6;
+      text-align: center;
+      position: relative;
+    }
+    .text-cat-input {
+      flex: 0 0 var(--text-cat-width, 120px);
+      min-width: 0;
+      padding: 4px 8px;
+      border: 1.5px solid #9aa0a6;
+      border-radius: 5px;
+      font-size: 0.83rem;
+      font-family: inherit;
+      background: #000000;
+      color: #e8eaed;
+    }
+    .text-cat-input::placeholder { color: #9aa0a6; }
+    .text-cat-input:focus { outline: none; border-color: #8ab4f8; box-shadow: 0 0 0 3px rgba(138,180,248,0.15); }
+    .text-cat-input.text-cat-selected { background: #1a3a5c; border-color: #8ab4f8; }
+    .text-content-area {
+      flex: 1;
+      min-width: 0;
+      padding: 4px 7px;
+      border: 1.5px solid #9aa0a6;
+      border-radius: 5px;
+      font-family: 'Menlo', 'Consolas', monospace;
+      font-size: 0.8rem;
+      line-height: 1.45;
+      resize: none;
+      background: #000000;
+      color: #e8eaed;
+      overflow: hidden;
+      min-height: 2em;
+    }
+    .text-content-area:focus { outline: none; border-color: #8ab4f8; box-shadow: 0 0 0 3px rgba(138,180,248,0.15); }
+    .text-ac-dropdown {
+      position: fixed;
+      z-index: 9000;
+      background: #2d2e31;
+      border: 1.5px solid #9aa0a6;
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.55);
+      max-height: 180px;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: #28292c #9aa0a6;
+    }
+    .text-ac-dropdown::-webkit-scrollbar { width: 8px; }
+    .text-ac-dropdown::-webkit-scrollbar-track { background: #9aa0a6; }
+    .text-ac-dropdown::-webkit-scrollbar-thumb { background: #28292c !important; border-radius: 4px; }
+    .text-ac-dropdown::-webkit-scrollbar-thumb:hover { background: #28292c !important; filter: none !important; }
+    .text-ac-item { padding: 5px 10px; font-size: 0.83rem; cursor: pointer; white-space: nowrap; color: #e8eaed; }
+    .text-ac-item:focus { outline: none; }
+    .text-ac-item:hover, .text-ac-item.active { background: #1a3a5c; color: #aecbfa; }
+    #text-sel-box {
+      position: fixed;
+      border: 1.5px dashed #8ab4f8;
+      background: rgba(138,180,248,0.07);
+      pointer-events: none;
+      z-index: 8000;
+      display: none;
+    }
+    #org-outline-sel-box {
+      position: fixed;
+      border: 1.5px dashed #8ab4f8;
+      background: rgba(138,180,248,0.07);
+      pointer-events: none;
+      z-index: 8000;
+      display: none;
+    }
+    #org-reorder-sel-box {
+      position: fixed;
+      border: 1.5px dashed #8ab4f8;
+      background: rgba(138,180,248,0.07);
+      pointer-events: none;
+      z-index: 8000;
+      display: none;
+    }
+    .text-bulk-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9500;
+      background: rgba(0,0,0,0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .text-bulk-box {
+      background: #4a4d52;
+      border-radius: 10px;
+      padding: 20px 24px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.65);
+      min-width: 280px;
+    }
+    .text-bulk-box p { font-size: 0.85rem; color: #9aa0a6; margin-bottom: 10px; }
+    .org-modal-box { max-width: 560px; }
+    .org-modal-message { font-size: 0.85rem; color: #e8eaed; white-space: pre-line; line-height: 1.6; margin-bottom: 14px; }
+    .text-bulk-inp {
+      width: 100%;
+      padding: 6px 10px;
+      border: 1.5px solid #9aa0a6;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      margin-bottom: 12px;
+      font-family: inherit;
+      color: #e8eaed;
+      background: #000000;
+      box-sizing: border-box;
+    }
+    .text-bulk-inp:focus { outline: none; border-color: #8ab4f8; box-shadow: 0 0 0 3px rgba(138,180,248,0.15); }
+    .text-bulk-dropdown { position: absolute !important; top: calc(100% + 2px); left: 0; right: 0; min-width: 0 !important; }
+
+    #org-file-panel {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      margin-bottom: 6px;
+      scroll-snap-align: start;
+      scroll-snap-stop: always;
+    }
+    #text-mode-panel {
+      scroll-snap-align: start;
+      scroll-snap-stop: always;
+    }
+    #gui-mode-panel {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      scroll-snap-align: start;
+      scroll-snap-stop: always;
+    }
+    #gui-mode-panel #cat-panel { flex-shrink: 0; }
+    #gui-mode-panel #board-panel { flex: 1; min-height: 0; max-height: none; }
+    #cat-panel { margin-bottom: 6px; }
+    #org-outline-content {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      border-top: 1px solid #9aa0a6;
+      margin-top: 6px;
+      padding-top: 6px;
+    }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+<div class="app-header">
+  <span class="app-title">メモ整理ツール</span>
+  <span class="app-notice">⚠ F5・Ctrl+R 無効</span>
+  <button id="reload-btn" class="btn-reload">↺ リロード</button>
+</div>
+
+<div class="wrap">
+
+  <!-- File + Outline Panel (single panel) -->
+  <div class="panel" id="org-file-panel">
+    <div class="path-row">
+      <label class="org-label">ファイルパス <span id="org-total-lines" class="linecount"></span></label>
+      <div class="path-input-row">
+        <input type="text" id="org-file-path" class="org-path-input" placeholder="ファイルを選択してください">
+        <button class="btn btn-blue" id="org-load-btn" style="white-space:nowrap;flex-shrink:0;">読込</button>
+        <button class="btn btn-blue" id="org-reload-file-btn" style="white-space:nowrap;flex-shrink:0;opacity:0.4;cursor:default;" disabled>再読込</button>
+      </div>
+    </div>
+    <div class="org-path-full" id="org-path-full"></div>
+
+    <!-- Outline content (hidden until file loaded) -->
+    <div id="org-outline-content" class="hidden">
+      <div class="org-split">
+        <div class="org-split-left" id="org-split-left">
+          <div class="org-label">
+            アウトライン一覧
+            <span id="org-outline-count" class="linecount"></span>
+            <button class="btn-scroll" id="outline-collapse-all-btn" title="トップレベルのアウトライン以下をすべて折りたたむ/展開" style="margin-left:6px;">▤</button>
+            <span class="scroll-btns">
+              <button class="btn-scroll" id="outline-top-btn" title="最上部へ">▲</button>
+              <button class="btn-scroll" id="outline-bottom-btn" title="最下部へ">▼</button>
+            </span>
+          </div>
+          <div class="org-outline-search-row">
+            <input type="text" id="outline-search-input" class="file-drop-search-input" placeholder="アウトラインを絞り込み" autocomplete="off" style="max-width:none;width:100%;">
+          </div>
+          <div id="org-outline" class="org-outline-box"></div>
+        </div>
+        <div class="org-split-resizer" id="org-split-resizer"></div>
+        <div class="org-split-right">
+          <div class="org-label org-section-label-2row">
+            <div class="org-section-tabs-row">
+              <span class="org-section-tabs">
+                <button type="button" class="org-section-tab active" id="org-tab-section">セクション内容</button>
+                <button type="button" class="org-section-tab" id="org-tab-filedrop">ファイル一覧</button>
+                <button type="button" class="org-section-tab" id="org-tab-outline2">アウトライン一覧</button>
+              </span>
+            </div>
+            <div class="org-section-controls-row">
+              <span class="scroll-btns" style="margin-left:0;">
+                <button class="btn-scroll" id="section-top-btn" title="最上部へ">▲</button>
+                <button class="btn-scroll" id="section-bottom-btn" title="最下部へ">▼</button>
+              </span>
+              <span id="org-section-info" class="linecount"></span>
+              <button class="btn-scroll" id="line-num-toggle-btn" title="行番号 表示/非表示" style="margin-left:4px;">#</button>
+              <button class="btn-scroll" id="section-card-mode-btn" title="カードドラッグモード 表示/非表示（有効にするとカード単位でアウトライン一覧へドラッグできます）" style="margin-left:4px;"><span class="icon-mono">🃏</span></button>
+              <button class="btn-scroll" id="section-edit-btn" title="表示中のセクション内容を編集します" style="margin-left:4px;">編集</button>
+              <button class="btn-scroll hidden" id="outline2-collapse-all-btn" title="トップレベルのアウトライン以下をすべて折りたたむ/展開" style="margin-left:4px;">▤</button>
+            </div>
+          </div>
+          <div class="org-outline-search-row hidden" id="outline2-search-row">
+            <input type="text" id="outline2-search-input" class="file-drop-search-input" placeholder="アウトラインを絞り込み" autocomplete="off" style="max-width:none;width:100%;">
+          </div>
+          <div id="org-section-current-heading" class="org-section-current-heading"></div>
+          <div id="org-form2" class="org-form-view hide-line-nums">
+            <p class="org-form-placeholder">ファイルを読み込んでアウトラインを選択してください</p>
+          </div>
+        </div>
+      </div>
+      <div class="btn-row" id="org-bottom-bar">
+        <button class="btn btn-blue" id="process-btn" title="Ctrl+B">分解 (^B)</button>
+        <button class="btn btn-orange" id="agg-run-btn">集約_n_ソート</button>
+        <button class="btn btn-blue" id="append-unsorted-btn" title="任意の見出し・レベルのアウトラインを、未選択ならファイル先頭に、選択中ならそのアウトラインの下に追加します">アウトライン追加</button>
+        <button class="btn btn-blue" id="mark-empty-outline-btn" title="本文が空行のみ（または空）のアウトラインの見出しに「[empty] 」を付与します">空アウトライン名変換</button>
+        <label class="mode-label" style="margin-left:8px;">
+          <input type="radio" name="org-mode" id="mode-text" value="text" checked>
+          テキスト入力
+        </label>
+        <label class="mode-label">
+          <input type="radio" name="org-mode" id="mode-gui" value="gui">
+          GUI
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Text Mode Panel -->
+  <div class="panel hidden" id="text-mode-panel">
+    <div class="text-col-header">
+      <div class="text-col-label-cat">アウトライン</div>
+      <div class="text-col-resizer" id="text-col-resizer"></div>
+      <div class="text-col-label-content">
+        <span class="scroll-btns" style="position: absolute; left: 8px; top: 50%; transform: translateY(-50%); margin-left: 0;">
+          <button class="btn-scroll" id="text-top-btn" title="最上部へ">▲</button>
+          <button class="btn-scroll" id="text-bottom-btn" title="最下部へ">▼</button>
+        </span>
+        <span id="text-content-linecount" class="linecount"></span>
+        内容
+        <button class="btn-scroll" id="text-clear-btn" title="表示中の内容をクリアし、アウトライン一覧の表示に戻ります" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%);">クリアしてアウトライン一覧へ</button>
+      </div>
+    </div>
+    <div class="text-rows-container" id="text-rows-container"></div>
+    <div class="btn-row" style="margin-top: 10px;">
+      <button class="btn btn-orange" id="text-sort-btn">ソート</button>
+      <button class="btn btn-orange" id="text-sort-content-btn" title="アウトライン欄を無視して、内容の文字列順にカードを並び替えます">内容でソート</button>
+      <button class="btn btn-orange" id="text-dedup-btn" title="内容が完全一致するカードを、1件を残して削除します">重複削除</button>
+      <div style="display:flex;">
+        <button class="btn btn-blue" id="text-rule2-btn" title="アウトライン欄が空欄の行のうち、内容にファイル内のアウトライン名が登場するものへ、そのアウトライン名を設定します" style="border-top-right-radius:0; border-bottom-right-radius:0;">一致アウトライン設定</button>
+        <input type="text" inputmode="numeric" id="text-rule-minlen" placeholder="最小:5" title="上記「一致アウトライン設定」で対象とする最小文字数" style="width:56px; border-left:none; border-top-left-radius:0; border-bottom-left-radius:0;">
+      </div>
+      <button class="btn btn-blue" id="text-rule1-btn" title="アウトライン欄が空欄の行のうち、内容の末尾が「だろうか/?/だっけ/たい/たいかも/出来ないか」のいずれかで終わるものに「TODO」を設定します">TODO設定</button>
+      <button class="btn btn-blue" id="text-todo-prefix-btn" title="既にアウトライン欄に文字列が設定されている行に対し、「TODO 」を先頭に追記します（既にTODO/DONEが付いている行は対象外）">TODO付与</button>
+      <button class="btn btn-blue" id="text-export-btn" style="margin-left:auto;">置換え</button>
+    </div>
+  </div>
+
+  <!-- GUI Mode Panel（カテゴリ＋ボードをまとめて1エリアとしてスクロールスナップ） -->
+  <div class="hidden" id="gui-mode-panel">
+
+    <!-- Category Panel -->
+    <div class="panel" id="cat-panel">
+      <div class="cat-row">
+        <label class="org-label">カテゴリ（改行区切り）</label>
+        <textarea id="category-input" class="cat-textarea" placeholder="DONE&#10;除外">DONE
+除外</textarea>
+      </div>
+    </div>
+
+    <!-- Board Panel -->
+    <div class="panel" id="board-panel">
+
+      <div class="width-control">
+        <span>カード幅：<strong id="col-width-val">190</strong>px</span>
+        <input type="range" id="col-width-slider" min="120" max="420" value="190">
+        <div class="sel-bar" id="sel-bar">
+          クリック: 選択 / Ctrl+クリック: 複数選択 / 空白ドラッグ: 範囲選択 / カードドラッグ: 移動 / ダブルクリック: 編集
+        </div>
+        <span class="scroll-btns">
+          <button class="btn-scroll" id="board-top-btn" title="最上部へ">▲</button>
+          <button class="btn-scroll" id="board-bottom-btn" title="最下部へ">▼</button>
+        </span>
+        <button class="btn-scroll" id="gui-clear-btn" title="表示中の内容をクリアし、アウトライン一覧の表示に戻ります" style="margin-left:8px;">クリアしてアウトライン一覧へ</button>
+      </div>
+
+      <div class="board-wrap">
+        <div class="board" id="board"></div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-orange" id="gui-sort-content-btn" title="内容の文字列順に、各列のカードを並び替えます">内容でソート</button>
+        <button class="btn btn-orange" id="gui-dedup-btn" title="内容が完全一致するカードを、列をまたいで1件を残して削除します">重複削除</button>
+        <button class="btn btn-blue" id="export-btn" style="margin-left:auto;">置換え</button>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+<div id="rubber-band"></div>
+<div id="text-sel-box"></div>
+<div id="org-outline-sel-box"></div>
+<div id="org-reorder-sel-box"></div>
+<div id="text-ac-dropdown" class="text-ac-dropdown hidden"></div>
+<script src="dist/fileSource.js"></script>
+<script src="dist/main.js"></script>
+</body>
+</html>
