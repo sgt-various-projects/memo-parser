@@ -840,6 +840,14 @@
     .text-bulk-box p { font-size: 0.85rem; color: #9aa0a6; margin-bottom: 10px; }
     .org-modal-box { max-width: 560px; }
     .org-modal-message { font-size: 0.85rem; color: #e8eaed; white-space: pre-line; line-height: 1.6; margin-bottom: 14px; }
+    /* アウトライン項目の右クリックメニュー：画面中央寄せではなく、クリックした項目の近くに配置する */
+    .org-context-modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9500;
+      background: transparent;
+    }
+    .org-context-modal-box { position: fixed; min-width: 0; }
     .text-bulk-inp {
       width: 100%;
       padding: 6px 10px;

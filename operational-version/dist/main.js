@@ -1030,7 +1030,7 @@ function orgRenderOutline(content) {
         }
         div.addEventListener('contextmenu', (e) => {
             e.preventDefault();
-            orgShowSectionFileDropChoiceModal();
+            orgShowSectionFileDropChoiceModal(div);
         });
         const foldToggle = document.createElement('span');
         foldToggle.className = 'org-outline-fold-toggle' + (hasChildren ? '' : ' no-children');
@@ -2465,12 +2465,15 @@ document.getElementById('org-tab-outline2').addEventListener('click', () => {
     if (!orgOutline2Active)
         orgShowOutlineMirrorUI();
 });
-/** 左のアウトライン一覧の項目を右クリックした際に表示する、「セクション内容」「ファイル一覧」切り替え用モーダル。 */
-function orgShowSectionFileDropChoiceModal() {
+/**
+ * 左のアウトライン一覧の項目を右クリックした際に表示する、「セクション内容」「ファイル一覧」切り替え用モーダル。
+ * 画面中央ではなく、右クリックしたアウトライン項目（anchorEl）の近く（できれば真上）に表示する。
+ */
+function orgShowSectionFileDropChoiceModal(anchorEl) {
     const overlay = document.createElement('div');
-    overlay.className = 'text-bulk-overlay';
+    overlay.className = 'org-context-modal-overlay';
     const box = document.createElement('div');
-    box.className = 'text-bulk-box org-modal-box';
+    box.className = 'text-bulk-box org-modal-box org-context-modal-box';
     const p = document.createElement('p');
     p.className = 'org-modal-message';
     p.textContent = '表示を切り替えます:';
@@ -2515,6 +2518,20 @@ function orgShowSectionFileDropChoiceModal() {
     overlay.addEventListener('click', (e) => { if (e.target === overlay)
         finish(); });
     document.body.appendChild(overlay);
+    // アウトライン項目の近くに配置する。まず真上に置き、真上に収まらなければ下側に、
+    // 左右は画面外にはみ出さないようにクランプする。
+    const anchorRect = anchorEl.getBoundingClientRect();
+    const boxRect = box.getBoundingClientRect();
+    const gap = 6;
+    const margin = 8;
+    let left = anchorRect.left;
+    left = Math.min(left, window.innerWidth - boxRect.width - margin);
+    left = Math.max(left, margin);
+    let top = anchorRect.top - boxRect.height - gap;
+    if (top < margin)
+        top = anchorRect.bottom + gap;
+    box.style.left = `${left}px`;
+    box.style.top = `${top}px`;
     setTimeout(() => sectionBtn.focus({ preventScroll: true }), 50);
 }
 // ファイル一覧内の「ファイルが無い場所」へのドロップ（コンテナ要素は再利用されるため、リスナーは一度だけ登録する）
