@@ -1030,7 +1030,7 @@ function orgRenderOutline(content) {
         }
         div.addEventListener('contextmenu', (e) => {
             e.preventDefault();
-            orgShowOutlineContextMenu(div, item, textSpan);
+            orgShowOutlineContextMenu(div, item, textSpan, hasChildren);
         });
         const foldToggle = document.createElement('span');
         foldToggle.className = 'org-outline-fold-toggle' + (hasChildren ? '' : ' no-children');
@@ -2546,7 +2546,7 @@ async function orgDeleteOutlineItem(item) {
  * 左のアウトライン一覧の項目を右クリックした際に表示するメニュー（「ファイル一覧」表示切替／アウトライン名変更／削除）。
  * 画面中央ではなく、右クリックしたアウトライン項目（anchorEl）の近く（できれば真上）に表示する。
  */
-function orgShowOutlineContextMenu(anchorEl, item, textSpan) {
+function orgShowOutlineContextMenu(anchorEl, item, textSpan, hasChildren) {
     const overlay = document.createElement('div');
     overlay.className = 'org-context-modal-overlay';
     const box = document.createElement('div');
@@ -2566,6 +2566,12 @@ function orgShowOutlineContextMenu(anchorEl, item, textSpan) {
     const editBtn = document.createElement('button');
     editBtn.textContent = '編集';
     editBtn.style.cssText = btnStyle;
+    const decomposeBtn = document.createElement('button');
+    decomposeBtn.textContent = '分解';
+    decomposeBtn.style.cssText = btnStyle;
+    const aggregateBtn = document.createElement('button');
+    aggregateBtn.textContent = '集約_n_ソート';
+    aggregateBtn.style.cssText = btnStyle;
     const deleteBtn = document.createElement('button');
     deleteBtn.textContent = 'アウトライン削除';
     deleteBtn.style.cssText = btnStyle + 'color:#ea4335;';
@@ -2598,6 +2604,16 @@ function orgShowOutlineContextMenu(anchorEl, item, textSpan) {
         orgShowSectionTabForOutlineItem(item);
         void orgShowSectionEditModal();
     });
+    decomposeBtn.addEventListener('click', () => {
+        finish();
+        orgShowSectionTabForOutlineItem(item);
+        void orgRunDecompose();
+    });
+    aggregateBtn.addEventListener('click', () => {
+        finish();
+        orgShowSectionTabForOutlineItem(item);
+        void orgRunAggregateSort();
+    });
     deleteBtn.addEventListener('click', () => {
         finish();
         void orgDeleteOutlineItem(item);
@@ -2606,6 +2622,9 @@ function orgShowOutlineContextMenu(anchorEl, item, textSpan) {
     btnRow.appendChild(deleteBtn);
     btnRow.appendChild(renameBtn);
     btnRow.appendChild(editBtn);
+    if (hasChildren)
+        btnRow.appendChild(aggregateBtn);
+    btnRow.appendChild(decomposeBtn);
     btnRow.appendChild(fileDropBtn);
     box.appendChild(p);
     box.appendChild(btnRow);
@@ -3768,7 +3787,7 @@ document.addEventListener('keydown', (e) => {
         }
     }
 }, true);
-// Ctrl+B → 分解ボタン
+// Ctrl+B → 分解
 document.addEventListener('keydown', (e) => {
     if (!(e.ctrlKey || e.metaKey) || e.key !== 'b')
         return;
@@ -3776,7 +3795,7 @@ document.addEventListener('keydown', (e) => {
     if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
         return;
     e.preventDefault();
-    document.getElementById('process-btn')?.click();
+    void orgRunDecompose();
 });
 // ===== Event bindings =====
 (function restoreCategories() {
@@ -3835,7 +3854,7 @@ document.getElementById('org-load-btn').addEventListener('click', async () => {
     orgAfterFileLoaded();
 });
 // 分解開始
-document.getElementById('process-btn').addEventListener('click', async () => {
+async function orgRunDecompose() {
     if (!orgOriginalContent.trim()) {
         await orgModalAlert('ファイルを読み込んでください');
         return;
@@ -3883,7 +3902,7 @@ document.getElementById('process-btn').addEventListener('click', async () => {
         hideTextPanel();
         showGuiPanel();
     }
-});
+}
 // GUI mode sort
 document.getElementById('gui-sort-content-btn').addEventListener('click', async () => {
     if (!await orgModalConfirm('内容の文字列順でソートします（各列内）。よろしいですか？'))
@@ -3939,7 +3958,7 @@ document.getElementById('export-btn').addEventListener('click', async () => {
     window.scrollTo(0, 0);
 });
 // 集約
-document.getElementById('agg-run-btn').addEventListener('click', async () => {
+async function orgRunAggregateSort() {
     if (!orgOriginalContent.trim()) {
         await orgModalAlert('ファイルを読み込んでください');
         return;
@@ -3996,7 +4015,7 @@ document.getElementById('agg-run-btn').addEventListener('click', async () => {
     }
     updateTotalLines(orgOriginalContent);
     orgRenderOutline(orgOriginalContent);
-});
+}
 // 貼り付けた内容を「** 未整理」として末尾に追加
 document.getElementById('append-unsorted-btn').addEventListener('click', () => {
     orgShowAppendUnsortedModal();
