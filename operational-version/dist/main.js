@@ -1125,12 +1125,16 @@ function orgRenderOutline(content) {
                 if (cancelled || busy)
                     return;
                 busy = true;
-                const newLine = input.value.replace(/\s+$/, '');
+                // タイトルが空（"*+" の後が空白のみ）の場合、末尾スペース全除去だと見出しの必須スペースまで
+                // 消えてしまうため、その場合だけ1つスペースを残す。
+                const newLine = /^\*+\s*$/.test(input.value)
+                    ? input.value.replace(/^(\*+)\s*$/, '$1 ')
+                    : input.value.replace(/\s+$/, '');
                 if (newLine === currentLine) {
                     cancelEdit();
                     return;
                 }
-                if (!/^\*+ .+$/.test(newLine)) {
+                if (!orgIsOutline(newLine)) {
                     busy = false;
                     await orgModalAlert('見出しの形式が正しくありません。「*」を1つ以上の後に半角スペース、続けてタイトルを入力してください。（例: ** TODO 買い物）');
                     input.focus();
