@@ -11,6 +11,29 @@
 // index.html はローカルファイル (file://) から直接開かれる想定であり、
 // type="module" にすると Chrome 等が file:// 上でのモジュール読込を CORS でブロックしてしまうため、
 // dist/fileSource.js → dist/main.js の順に読み込む通常の <script> タグ（グローバルスコープ）で構成する。
+/**
+ * ファイルの生バイト列から、文字コードを推定して正しくデコードする。
+ * `Blob.text()` は常にUTF-8として解釈するため、Shift-JIS等UTF-8以外のエンコーディングで
+ * 保存された .org ファイルを読み込むと文字化けし、そのまま上書き保存すると元の内容が失われて
+ * ファイルが破損してしまう。BOM判定 → UTF-8として厳密デコード（失敗時はShift-JISへフォールバック）
+ * の順で判定する。デコード後は常に正しいJS文字列になり、保存時は常にUTF-8で書き込まれるため、
+ * 結果的に非UTF-8ファイルもUTF-8へ変換されたうえで保存される。
+ */
+function decodeFileBuffer(buffer) {
+    const bytes = new Uint8Array(buffer);
+    if (bytes.length >= 2 && bytes[0] === 0xFF && bytes[1] === 0xFE) {
+        return new TextDecoder('utf-16le').decode(buffer);
+    }
+    if (bytes.length >= 2 && bytes[0] === 0xFE && bytes[1] === 0xFF) {
+        return new TextDecoder('utf-16be').decode(buffer);
+    }
+    try {
+        return new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+    }
+    catch {
+        return new TextDecoder('shift_jis').decode(buffer);
+    }
+}
 class BrowserOrgFileSource {
     constructor() {
         this.handle = null;
@@ -21,7 +44,7 @@ class BrowserOrgFileSource {
             const [handle] = await window.showOpenFilePicker();
             this.handle = handle;
             const file = await handle.getFile();
-            const content = await file.text();
+            const content = decodeFileBuffer(await file.arrayBuffer());
             return { content, name: file.name };
         }
         return new Promise(resolve => {
@@ -34,7 +57,7 @@ class BrowserOrgFileSource {
                     return;
                 }
                 this.handle = null;
-                const content = await file.text();
+                const content = decodeFileBuffer(await file.arrayBuffer());
                 resolve({ content, name: file.name });
             };
             inp.click();
@@ -44,7 +67,7 @@ class BrowserOrgFileSource {
         const handle = ref;
         this.handle = handle;
         const file = await handle.getFile();
-        const content = await file.text();
+        const content = decodeFileBuffer(await file.arrayBuffer());
         return { content, name: file.name };
     }
     canReload() {
@@ -54,7 +77,7 @@ class BrowserOrgFileSource {
         if (!this.handle)
             throw new Error('再読込可能なファイルがありません');
         const file = await this.handle.getFile();
-        return file.text();
+        return decodeFileBuffer(await file.arrayBuffer());
     }
     async save(content, suggestedFileName) {
         if (this.handle) {
@@ -135,7 +158,7 @@ class BrowserOrgFileSource {
     }
     async readFile(ref) {
         const file = await ref.getFile();
-        return file.text();
+        return decodeFileBuffer(await file.arrayBuffer());
     }
     async writeFile(ref, content) {
         const handle = ref;
