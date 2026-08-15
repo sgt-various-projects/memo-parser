@@ -1019,7 +1019,7 @@ function orgRenderOutline(content) {
         const hasChildren = orgOutlineHasChildren(outlines, i);
         const div = document.createElement('div');
         div.className = 'org-outline-item lv' + Math.min(item.level, 4);
-        div.title = item.text + '\n（右クリックで「セクション内容」⇔「ファイル一覧」の切り替えメニューを表示）';
+        div.title = item.text + '\n（ダブルクリックでセクション内容を表示／右クリックでメニューを表示）';
         div.dataset['charPos'] = String(item.charPos);
         if (orgFileDropActive) {
             if (orgFileDropSelectedOutlines.has(item.charPos))
@@ -1030,7 +1030,7 @@ function orgRenderOutline(content) {
         }
         div.addEventListener('contextmenu', (e) => {
             e.preventDefault();
-            orgShowSectionFileDropChoiceModal(div);
+            orgShowOutlineContextMenu(div, item, textSpan);
         });
         const foldToggle = document.createElement('span');
         foldToggle.className = 'org-outline-fold-toggle' + (hasChildren ? '' : ' no-children');
@@ -1107,86 +1107,7 @@ function orgRenderOutline(content) {
         });
         div.addEventListener('dblclick', (e) => {
             e.stopPropagation();
-            // レベル（"*" の数）も含めた見出し行全体をテキストとして編集できるようにする
-            const currentLine = item.text;
-            const input = document.createElement('input');
-            input.type = 'text';
-            input.className = 'org-outline-edit-input';
-            input.value = currentLine;
-            textSpan.replaceWith(input);
-            input.focus();
-            input.select();
-            let cancelled = false;
-            // モーダル表示中にモーダル側のボタンへフォーカスが移ると input が blur し、
-            // blur リスナーが applyEdit を再度呼んでしまう（確認モーダルが二重に開く・保存が
-            // 意図せず先に走る原因になる）ため、処理中は busy で再入を防ぐ。
-            let busy = false;
-            const cancelEdit = () => {
-                cancelled = true;
-                input.replaceWith(textSpan);
-            };
-            const applyEdit = async () => {
-                if (cancelled || busy)
-                    return;
-                busy = true;
-                // タイトルが空（"*+" の後が空白のみ）の場合、末尾スペース全除去だと見出しの必須スペースまで
-                // 消えてしまうため、その場合だけ1つスペースを残す。
-                const newLine = /^\*+\s*$/.test(input.value)
-                    ? input.value.replace(/^(\*+)\s*$/, '$1 ')
-                    : input.value.replace(/\s+$/, '');
-                if (newLine === currentLine) {
-                    cancelEdit();
-                    return;
-                }
-                if (!orgIsOutline(newLine)) {
-                    busy = false;
-                    await orgModalAlert('見出しの形式が正しくありません。「*」を1つ以上の後に半角スペース、続けてタイトルを入力してください。（例: ** TODO 買い物）');
-                    input.focus();
-                    return;
-                }
-                const confirmed = await orgModalConfirm('アウトラインを変更します:\n\n' +
-                    '変更前: ' + currentLine + '\n' +
-                    '変更後: ' + newLine + '\n\n' +
-                    'OKを押すと上書き保存します。');
-                if (!confirmed) {
-                    busy = false;
-                    cancelEdit();
-                    return;
-                }
-                const selectedLineIdx = orgSelectedCharPos !== null
-                    ? charPosToLineIndex(orgOriginalContent, orgSelectedCharPos) : -1;
-                const lines = orgOriginalContent.split('\n');
-                lines[item.lineIndex] = newLine;
-                const newContent = lines.join('\n');
-                const saved = await saveOrgContent(newContent);
-                if (!saved) {
-                    busy = false;
-                    cancelEdit();
-                    return;
-                }
-                orgOriginalContent = newContent;
-                if (selectedLineIdx >= 0) {
-                    const newOutlines = orgGetOutlines(orgOriginalContent);
-                    const sel = newOutlines.find(o => o.lineIndex === selectedLineIdx);
-                    orgSelectedCharPos = sel ? sel.charPos : null;
-                    orgSelectedRange = orgSelectedCharPos !== null
-                        ? getOutlineSectionRange(orgOriginalContent, orgSelectedCharPos) : null;
-                }
-                cancelled = true;
-                updateTotalLines(orgOriginalContent);
-                orgRenderOutline(orgOriginalContent);
-            };
-            input.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    void applyEdit();
-                }
-                else if (e.key === 'Escape') {
-                    e.preventDefault();
-                    cancelEdit();
-                }
-            });
-            input.addEventListener('blur', () => { void applyEdit(); });
+            orgShowSectionTabForOutlineItem(item);
         });
         div.draggable = true;
         div.addEventListener('dragstart', (e) => {
@@ -2466,25 +2387,190 @@ document.getElementById('org-tab-outline2').addEventListener('click', () => {
         orgShowOutlineMirrorUI();
 });
 /**
- * 左のアウトライン一覧の項目を右クリックした際に表示する、「セクション内容」「ファイル一覧」切り替え用モーダル。
+ * 左のアウトライン一覧の項目をダブルクリックした際の挙動：ファイル一覧／アウトライン一覧タブ表示中でも、
+ * 「セクション内容」タブへ切り替えてこのアウトラインの内容を表示する。
+ */
+function orgShowSectionTabForOutlineItem(item) {
+    orgFileDropActive = false;
+    orgOutline2Active = false;
+    orgFileDropItemsContainer = null;
+    orgFileDropSelectedOutlines.clear();
+    orgReorderSelectedOutlines.clear();
+    orgSetRightTabActive('org-tab-section');
+    document.getElementById('org-form2')?.classList.remove('file-drop-list', 'outline2-list');
+    document.getElementById('org-section-info')?.classList.remove('hidden');
+    document.getElementById('line-num-toggle-btn')?.classList.remove('hidden');
+    document.getElementById('section-card-mode-btn')?.classList.remove('hidden');
+    document.getElementById('section-edit-btn')?.classList.remove('hidden');
+    document.getElementById('outline2-collapse-all-btn')?.classList.add('hidden');
+    document.getElementById('outline2-search-row')?.classList.add('hidden');
+    orgSelectedCharPos = item.charPos;
+    orgRenderOutline(orgOriginalContent); // 選択ハイライト・タブ表示を更新
+    orgShowSectionForSelected();
+}
+/** アウトライン一覧の項目名（見出し行全体）をインライン編集する。右クリックメニューの「アウトライン名を変更」から呼ばれる。 */
+function orgStartOutlineRenameEdit(item, textSpan) {
+    // レベル（"*" の数）も含めた見出し行全体をテキストとして編集できるようにする
+    const currentLine = item.text;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'org-outline-edit-input';
+    input.value = currentLine;
+    textSpan.replaceWith(input);
+    input.focus();
+    input.select();
+    let cancelled = false;
+    // モーダル表示中にモーダル側のボタンへフォーカスが移ると input が blur し、
+    // blur リスナーが applyEdit を再度呼んでしまう（確認モーダルが二重に開く・保存が
+    // 意図せず先に走る原因になる）ため、処理中は busy で再入を防ぐ。
+    let busy = false;
+    const cancelEdit = () => {
+        cancelled = true;
+        input.replaceWith(textSpan);
+    };
+    const applyEdit = async () => {
+        if (cancelled || busy)
+            return;
+        busy = true;
+        // タイトルが空（"*+" の後が空白のみ）の場合、末尾スペース全除去だと見出しの必須スペースまで
+        // 消えてしまうため、その場合だけ1つスペースを残す。
+        const newLine = /^\*+\s*$/.test(input.value)
+            ? input.value.replace(/^(\*+)\s*$/, '$1 ')
+            : input.value.replace(/\s+$/, '');
+        if (newLine === currentLine) {
+            cancelEdit();
+            return;
+        }
+        if (!orgIsOutline(newLine)) {
+            busy = false;
+            await orgModalAlert('見出しの形式が正しくありません。「*」を1つ以上の後に半角スペース、続けてタイトルを入力してください。（例: ** TODO 買い物）');
+            input.focus();
+            return;
+        }
+        const confirmed = await orgModalConfirm('アウトラインを変更します:\n\n' +
+            '変更前: ' + currentLine + '\n' +
+            '変更後: ' + newLine + '\n\n' +
+            'OKを押すと上書き保存します。');
+        if (!confirmed) {
+            busy = false;
+            cancelEdit();
+            return;
+        }
+        const selectedLineIdx = orgSelectedCharPos !== null
+            ? charPosToLineIndex(orgOriginalContent, orgSelectedCharPos) : -1;
+        const lines = orgOriginalContent.split('\n');
+        lines[item.lineIndex] = newLine;
+        const newContent = lines.join('\n');
+        const saved = await saveOrgContent(newContent);
+        if (!saved) {
+            busy = false;
+            cancelEdit();
+            return;
+        }
+        orgOriginalContent = newContent;
+        if (selectedLineIdx >= 0) {
+            const newOutlines = orgGetOutlines(orgOriginalContent);
+            const sel = newOutlines.find(o => o.lineIndex === selectedLineIdx);
+            orgSelectedCharPos = sel ? sel.charPos : null;
+            orgSelectedRange = orgSelectedCharPos !== null
+                ? getOutlineSectionRange(orgOriginalContent, orgSelectedCharPos) : null;
+        }
+        cancelled = true;
+        updateTotalLines(orgOriginalContent);
+        orgRenderOutline(orgOriginalContent);
+    };
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            void applyEdit();
+        }
+        else if (e.key === 'Escape') {
+            e.preventDefault();
+            cancelEdit();
+        }
+    });
+    input.addEventListener('blur', () => { void applyEdit(); });
+}
+/**
+ * 右クリックメニューの「アウトライン削除」：選択したアウトライン（子孫を含む範囲全体）とその内容を削除する。
+ * 他の書き換え系機能と同様、削除前後の行数（空白以外も含む）を表示する確認モーダルを出し、OKの場合のみ上書き保存する。
+ */
+async function orgDeleteOutlineItem(item) {
+    const range = getOutlineSectionRange(orgOriginalContent, item.charPos);
+    if (!range) {
+        await orgModalAlert('選択したアウトラインが見つかりませんでした（内容が変更された可能性があります）');
+        return;
+    }
+    const m = item.text.match(/^\*+\s+(.*)/);
+    const title = m ? m[1].trim() : item.text.trim();
+    const lines = orgOriginalContent.split('\n');
+    const removedCount = range.end - range.start;
+    const newLines = [...lines.slice(0, range.start), ...lines.slice(range.end)];
+    const newContent = newLines.join('\n');
+    const beforeLines = lines.length;
+    const beforeNB = orgCountNonBlank(orgOriginalContent);
+    const afterLines = newLines.length;
+    const afterNB = orgCountNonBlank(newContent);
+    const confirmed = await orgModalConfirm(`アウトライン「${title}」を削除します:\n\n` +
+        '元ファイル: ' + beforeLines + '行 / 空白以外: ' + beforeNB + '行\n' +
+        '削除後:     ' + afterLines + '行 / 空白以外: ' + afterNB + '行\n\n' +
+        'OKを押すと上書き保存します。');
+    if (!confirmed)
+        return;
+    const saved = await saveOrgContent(newContent);
+    if (!saved)
+        return;
+    const selectedLineIdx = orgSelectedCharPos !== null ? charPosToLineIndex(orgOriginalContent, orgSelectedCharPos) : null;
+    orgOriginalContent = newContent;
+    let newSelectedLineIdx = null;
+    if (selectedLineIdx !== null) {
+        if (selectedLineIdx >= range.start && selectedLineIdx < range.end) {
+            newSelectedLineIdx = null; // 削除された範囲内にあった選択は解除する
+        }
+        else if (selectedLineIdx >= range.end) {
+            newSelectedLineIdx = selectedLineIdx - removedCount;
+        }
+        else {
+            newSelectedLineIdx = selectedLineIdx;
+        }
+    }
+    if (newSelectedLineIdx !== null) {
+        const newOutlines = orgGetOutlines(orgOriginalContent);
+        const sel = newOutlines.find(o => o.lineIndex === newSelectedLineIdx);
+        orgSelectedCharPos = sel ? sel.charPos : null;
+    }
+    else {
+        orgSelectedCharPos = null;
+    }
+    orgReorderSelectedOutlines.clear();
+    updateTotalLines(orgOriginalContent);
+    orgRenderOutline(orgOriginalContent);
+    orgShowSectionForSelected();
+}
+/**
+ * 左のアウトライン一覧の項目を右クリックした際に表示するメニュー（「ファイル一覧」表示切替／アウトライン名変更／削除）。
  * 画面中央ではなく、右クリックしたアウトライン項目（anchorEl）の近く（できれば真上）に表示する。
  */
-function orgShowSectionFileDropChoiceModal(anchorEl) {
+function orgShowOutlineContextMenu(anchorEl, item, textSpan) {
     const overlay = document.createElement('div');
     overlay.className = 'org-context-modal-overlay';
     const box = document.createElement('div');
     box.className = 'text-bulk-box org-modal-box org-context-modal-box';
     const p = document.createElement('p');
     p.className = 'org-modal-message';
-    p.textContent = '表示を切り替えます:';
+    p.textContent = item.text;
     const btnRow = document.createElement('div');
-    btnRow.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;';
-    const sectionBtn = document.createElement('button');
-    sectionBtn.textContent = 'セクション内容';
-    sectionBtn.style.cssText = 'padding:5px 16px;font-size:0.82rem;font-weight:600;border-radius:6px;cursor:pointer;';
+    btnRow.style.cssText = 'display:flex;flex-direction:column;gap:6px;';
+    const btnStyle = 'padding:5px 16px;font-size:0.82rem;font-weight:600;border-radius:6px;cursor:pointer;text-align:left;';
+    const renameBtn = document.createElement('button');
+    renameBtn.textContent = 'アウトライン名を変更';
+    renameBtn.style.cssText = btnStyle;
     const fileDropBtn = document.createElement('button');
     fileDropBtn.textContent = 'ファイル一覧';
-    fileDropBtn.style.cssText = 'padding:5px 16px;font-size:0.82rem;font-weight:600;border-radius:6px;cursor:pointer;';
+    fileDropBtn.style.cssText = btnStyle;
+    const deleteBtn = document.createElement('button');
+    deleteBtn.textContent = 'アウトライン削除';
+    deleteBtn.style.cssText = btnStyle + 'color:#ea4335;';
     let resolved = false;
     const finish = () => {
         if (resolved)
@@ -2501,16 +2587,21 @@ function orgShowSectionFileDropChoiceModal(anchorEl) {
             finish();
         }
     };
-    sectionBtn.addEventListener('click', () => {
+    renameBtn.addEventListener('click', () => {
         finish();
-        orgDeactivateFileDropMode();
+        orgStartOutlineRenameEdit(item, textSpan);
     });
     fileDropBtn.addEventListener('click', () => {
         finish();
         void orgOpenFileDropView();
     });
+    deleteBtn.addEventListener('click', () => {
+        finish();
+        void orgDeleteOutlineItem(item);
+    });
     document.addEventListener('keydown', onKey, true);
-    btnRow.appendChild(sectionBtn);
+    btnRow.appendChild(deleteBtn);
+    btnRow.appendChild(renameBtn);
     btnRow.appendChild(fileDropBtn);
     box.appendChild(p);
     box.appendChild(btnRow);
@@ -2532,7 +2623,7 @@ function orgShowSectionFileDropChoiceModal(anchorEl) {
         top = anchorRect.bottom + gap;
     box.style.left = `${left}px`;
     box.style.top = `${top}px`;
-    setTimeout(() => sectionBtn.focus({ preventScroll: true }), 50);
+    setTimeout(() => renameBtn.focus({ preventScroll: true }), 50);
 }
 // ファイル一覧内の「ファイルが無い場所」へのドロップ（コンテナ要素は再利用されるため、リスナーは一度だけ登録する）
 (() => {
