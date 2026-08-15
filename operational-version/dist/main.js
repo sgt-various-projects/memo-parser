@@ -1693,7 +1693,6 @@ function orgShowFileDropListUI() {
     document.getElementById('org-section-info')?.classList.add('hidden');
     document.getElementById('line-num-toggle-btn')?.classList.add('hidden');
     document.getElementById('section-card-mode-btn')?.classList.add('hidden');
-    document.getElementById('section-edit-btn')?.classList.add('hidden');
     document.getElementById('outline2-collapse-all-btn')?.classList.add('hidden');
     document.getElementById('outline2-search-row')?.classList.add('hidden');
     orgUpdateSectionCurrentHeading(null);
@@ -1715,7 +1714,6 @@ function orgLeaveOutline2Tab() {
     document.getElementById('org-section-info')?.classList.remove('hidden');
     document.getElementById('line-num-toggle-btn')?.classList.remove('hidden');
     document.getElementById('section-card-mode-btn')?.classList.remove('hidden');
-    document.getElementById('section-edit-btn')?.classList.remove('hidden');
     document.getElementById('outline2-collapse-all-btn')?.classList.add('hidden');
     document.getElementById('outline2-search-row')?.classList.add('hidden');
 }
@@ -1728,7 +1726,6 @@ function orgShowOutlineMirrorUI() {
     document.getElementById('org-section-info')?.classList.add('hidden');
     document.getElementById('line-num-toggle-btn')?.classList.add('hidden');
     document.getElementById('section-card-mode-btn')?.classList.add('hidden');
-    document.getElementById('section-edit-btn')?.classList.add('hidden');
     document.getElementById('outline2-collapse-all-btn')?.classList.remove('hidden');
     document.getElementById('outline2-search-row')?.classList.remove('hidden');
     orgUpdateSectionCurrentHeading(null);
@@ -1942,7 +1939,6 @@ function orgDeactivateFileDropMode() {
     document.getElementById('org-section-info')?.classList.remove('hidden');
     document.getElementById('line-num-toggle-btn')?.classList.remove('hidden');
     document.getElementById('section-card-mode-btn')?.classList.remove('hidden');
-    document.getElementById('section-edit-btn')?.classList.remove('hidden');
     document.getElementById('outline2-collapse-all-btn')?.classList.add('hidden');
     document.getElementById('outline2-search-row')?.classList.add('hidden');
     orgShowSectionForSelected();
@@ -2401,7 +2397,6 @@ function orgShowSectionTabForOutlineItem(item) {
     document.getElementById('org-section-info')?.classList.remove('hidden');
     document.getElementById('line-num-toggle-btn')?.classList.remove('hidden');
     document.getElementById('section-card-mode-btn')?.classList.remove('hidden');
-    document.getElementById('section-edit-btn')?.classList.remove('hidden');
     document.getElementById('outline2-collapse-all-btn')?.classList.add('hidden');
     document.getElementById('outline2-search-row')?.classList.add('hidden');
     orgSelectedCharPos = item.charPos;
@@ -2568,6 +2563,9 @@ function orgShowOutlineContextMenu(anchorEl, item, textSpan) {
     const fileDropBtn = document.createElement('button');
     fileDropBtn.textContent = 'ファイル一覧';
     fileDropBtn.style.cssText = btnStyle;
+    const editBtn = document.createElement('button');
+    editBtn.textContent = '編集';
+    editBtn.style.cssText = btnStyle;
     const deleteBtn = document.createElement('button');
     deleteBtn.textContent = 'アウトライン削除';
     deleteBtn.style.cssText = btnStyle + 'color:#ea4335;';
@@ -2595,6 +2593,11 @@ function orgShowOutlineContextMenu(anchorEl, item, textSpan) {
         finish();
         void orgOpenFileDropView();
     });
+    editBtn.addEventListener('click', () => {
+        finish();
+        orgShowSectionTabForOutlineItem(item);
+        void orgShowSectionEditModal();
+    });
     deleteBtn.addEventListener('click', () => {
         finish();
         void orgDeleteOutlineItem(item);
@@ -2602,6 +2605,7 @@ function orgShowOutlineContextMenu(anchorEl, item, textSpan) {
     document.addEventListener('keydown', onKey, true);
     btnRow.appendChild(deleteBtn);
     btnRow.appendChild(renameBtn);
+    btnRow.appendChild(editBtn);
     btnRow.appendChild(fileDropBtn);
     box.appendChild(p);
     box.appendChild(btnRow);
@@ -3996,10 +4000,6 @@ document.getElementById('agg-run-btn').addEventListener('click', async () => {
 // 貼り付けた内容を「** 未整理」として末尾に追加
 document.getElementById('append-unsorted-btn').addEventListener('click', () => {
     orgShowAppendUnsortedModal();
-});
-// 表示中のセクション内容を編集する
-document.getElementById('section-edit-btn').addEventListener('click', () => {
-    void orgShowSectionEditModal();
 });
 // 本文が空（空行のみ、または本文なし）のアウトラインの見出しに「[empty] 」を付与する
 document.getElementById('mark-empty-outline-btn').addEventListener('click', async () => {
