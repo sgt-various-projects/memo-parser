@@ -2779,23 +2779,43 @@ async function orgLoadFromRef(ref) {
     return true;
 }
 // ===== Org aggregate =====
-/** 集約_n_ソートの中核処理: children を見出しテキストでグループ化し、ソートして本文行を組み立てる。 */
-function orgBuildAggregatedLines(lines, children, scopeEndLine, prefixLines) {
+/** 行末の改行コード判定用: CRLF由来の行は split('\n') 後も末尾に \r が残るため、それを取り除いた内容で比較する。 */
+function orgStripTrailingCR(line) {
+    return line.endsWith('\r') ? line.slice(0, -1) : line;
+}
+/**
+ * content 内に LF（\n）と CRLF（\r\n）が混在しているかどうかを判定する。
+ * 文字コードの異なるファイル間でアウトラインを移動・集約した際などに、改行コードが混ざることがある。
+ */
+function orgHasMixedLineEndings(content) {
+    const hasCRLF = content.includes('\r\n');
+    const hasLoneLF = /(?<!\r)\n/.test(content);
+    return hasCRLF && hasLoneLF;
+}
+/**
+ * 集約_n_ソートの中核処理: children を見出しテキストでグループ化し、ソートして本文行を組み立てる。
+ * 見出しの末尾の改行コードが LF/CRLF どちらでも、それ以外の内容が同じであれば同じ見出し（同じアウトライン）
+ * として扱う。集約対象に LF と CRLF が混在していた場合（mixedEOL）は、出力する行をすべて CRLF に統一する。
+ */
+function orgBuildAggregatedLines(lines, children, scopeEndLine, prefixLines, mixedEOL) {
     const groupMap = new Map();
     const order = [];
+    const headerByKey = new Map();
     for (let i = 0; i < children.length; i++) {
         const child = children[i];
         const header = lines[child.lineIndex];
+        const key = orgStripTrailingCR(header);
         const nextEnd = i + 1 < children.length ? children[i + 1].lineIndex : scopeEndLine;
         const block = lines.slice(child.lineIndex + 1, nextEnd);
-        if (!groupMap.has(header)) {
-            groupMap.set(header, []);
-            order.push(header);
+        if (!groupMap.has(key)) {
+            groupMap.set(key, []);
+            order.push(key);
+            headerByKey.set(key, header);
         }
-        groupMap.get(header).push(block);
+        groupMap.get(key).push(block);
     }
-    const sortKey = (header) => {
-        const title = (header.match(/^\*+ (.*)$/) ?? ['', header])[1];
+    const sortKey = (key) => {
+        const title = (key.match(/^\*+ (.*)$/) ?? ['', key])[1];
         if (/^DONE/.test(title) || title === 'z' || title === 'j' || title === '除外' || title === '済み')
             return [0, title];
         if (/^TODO/.test(title))
@@ -2808,9 +2828,9 @@ function orgBuildAggregatedLines(lines, children, scopeEndLine, prefixLines) {
         return pa !== pb ? pa - pb : ta.localeCompare(tb, 'ja');
     });
     const aggregated = [...prefixLines];
-    for (const header of order) {
-        const blocks = groupMap.get(header);
-        aggregated.push(header);
+    for (const key of order) {
+        const blocks = groupMap.get(key);
+        aggregated.push(headerByKey.get(key));
         const trimmed = blocks.map(b => {
             let end = b.length;
             while (end > 0 && b[end - 1].trim() === '')
@@ -2824,7 +2844,7 @@ function orgBuildAggregatedLines(lines, children, scopeEndLine, prefixLines) {
         }
         aggregated.push('', '');
     }
-    return aggregated;
+    return mixedEOL ? aggregated.map(l => orgStripTrailingCR(l) + '\r') : aggregated;
 }
 function orgAggregateContent(content, selectedCharPos) {
     const lines = content.split('\n');
@@ -2848,7 +2868,7 @@ function orgAggregateContent(content, selectedCharPos) {
         return content;
     const firstChildLine = children[0].lineIndex;
     const prefixLines = lines.slice(sel.lineIndex, firstChildLine);
-    const aggregated = orgBuildAggregatedLines(lines, children, scopeEndLine, prefixLines);
+    const aggregated = orgBuildAggregatedLines(lines, children, scopeEndLine, prefixLines, orgHasMixedLineEndings(content));
     const beforeScope = lines.slice(0, sel.lineIndex);
     const afterScope = lines.slice(scopeEndLine);
     return [...beforeScope, ...aggregated, ...afterScope].join('\n');
@@ -2873,7 +2893,7 @@ function orgAggregateContentImplicitRoot(content) {
     const scopeEndLine = lines.length;
     const firstChildLine = children[0].lineIndex;
     const prefixLines = lines.slice(0, firstChildLine);
-    const aggregated = orgBuildAggregatedLines(lines, children, scopeEndLine, prefixLines);
+    const aggregated = orgBuildAggregatedLines(lines, children, scopeEndLine, prefixLines, orgHasMixedLineEndings(content));
     return aggregated.join('\n');
 }
 // ===== Outline/Section resize =====
