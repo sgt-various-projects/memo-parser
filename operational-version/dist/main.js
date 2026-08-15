@@ -3961,6 +3961,16 @@ document.getElementById('reload-btn').addEventListener('click', async () => {
         window.location.reload();
     }
 });
+// 最終コミット日時表示（dist/build-info.js が生成する window.APP_LAST_COMMIT_LABEL を表示。
+// ビルド前など未生成の場合は何も表示しない）
+(function initLastCommitLabel() {
+    const label = window.APP_LAST_COMMIT_LABEL;
+    if (!label)
+        return;
+    const el = document.getElementById('app-last-commit');
+    if (el)
+        el.textContent = `最終コミット: ${label}`;
+})();
 // トップレベルのアウトライン以下をすべて折りたたむ/展開（左のアウトライン一覧）
 document.getElementById('outline-collapse-all-btn').addEventListener('click', (e) => {
     orgToggleCollapseAll(orgGetOutlines(orgOriginalContent), orgCollapsedOutlines);

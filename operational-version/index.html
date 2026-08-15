@@ -57,6 +57,11 @@
       transition: border-color 0.2s, color 0.2s;
     }
     .btn-reload:hover { border-color: #ea4335; color: #ea4335; }
+    .app-last-commit {
+      font-size: 0.68rem;
+      color: #9aa0a6;
+      white-space: nowrap;
+    }
 
     .wrap { width: 100%; }
 
@@ -889,6 +894,7 @@
 <div class="app-header">
   <span class="app-title">メモ整理ツール</span>
   <span class="app-notice">⚠ F5・Ctrl+R 無効</span>
+  <span id="app-last-commit" class="app-last-commit"></span>
   <button id="reload-btn" class="btn-reload">↺ リロード</button>
 </div>
 
@@ -1051,6 +1057,7 @@
 <div id="org-outline-sel-box"></div>
 <div id="org-reorder-sel-box"></div>
 <div id="text-ac-dropdown" class="text-ac-dropdown hidden"></div>
+<script src="dist/build-info.js"></script>
 <script src="dist/fileSource.js"></script>
 <script src="dist/main.js"></script>
 </body>
