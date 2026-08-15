@@ -2560,6 +2560,9 @@ function orgShowOutlineContextMenu(anchorEl, item, textSpan, hasChildren) {
     const renameBtn = document.createElement('button');
     renameBtn.textContent = 'アウトライン名を変更';
     renameBtn.style.cssText = btnStyle;
+    const outline2Btn = document.createElement('button');
+    outline2Btn.textContent = 'アウトライン一覧';
+    outline2Btn.style.cssText = btnStyle;
     const fileDropBtn = document.createElement('button');
     fileDropBtn.textContent = 'ファイル一覧';
     fileDropBtn.style.cssText = btnStyle;
@@ -2595,6 +2598,11 @@ function orgShowOutlineContextMenu(anchorEl, item, textSpan, hasChildren) {
         finish();
         orgStartOutlineRenameEdit(item, textSpan);
     });
+    outline2Btn.addEventListener('click', () => {
+        finish();
+        if (!orgOutline2Active)
+            orgShowOutlineMirrorUI();
+    });
     fileDropBtn.addEventListener('click', () => {
         finish();
         void orgOpenFileDropView();
@@ -2620,6 +2628,7 @@ function orgShowOutlineContextMenu(anchorEl, item, textSpan, hasChildren) {
     });
     document.addEventListener('keydown', onKey, true);
     btnRow.appendChild(deleteBtn);
+    btnRow.appendChild(outline2Btn);
     btnRow.appendChild(renameBtn);
     btnRow.appendChild(editBtn);
     if (hasChildren)
