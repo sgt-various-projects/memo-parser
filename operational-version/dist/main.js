@@ -3969,7 +3969,7 @@ document.getElementById('reload-btn').addEventListener('click', async () => {
         return;
     const el = document.getElementById('app-last-commit');
     if (el)
-        el.textContent = `最終コミット: ${label}`;
+        el.textContent = `Released: ${label}`;
 })();
 // トップレベルのアウトライン以下をすべて折りたたむ/展開（左のアウトライン一覧）
 document.getElementById('outline-collapse-all-btn').addEventListener('click', (e) => {
