@@ -1019,7 +1019,7 @@ function orgRenderOutline(content) {
         const hasChildren = orgOutlineHasChildren(outlines, i);
         const div = document.createElement('div');
         div.className = 'org-outline-item lv' + Math.min(item.level, 4);
-        div.title = item.text;
+        div.title = item.text + '\n（右クリックで「セクション内容」⇔「ファイル一覧」の切り替えメニューを表示）';
         div.dataset['charPos'] = String(item.charPos);
         if (orgFileDropActive) {
             if (orgFileDropSelectedOutlines.has(item.charPos))
@@ -1028,6 +1028,10 @@ function orgRenderOutline(content) {
         else if (item.charPos === orgSelectedCharPos || orgReorderSelectedOutlines.has(item.charPos)) {
             div.classList.add('selected');
         }
+        div.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            orgShowSectionFileDropChoiceModal();
+        });
         const foldToggle = document.createElement('span');
         foldToggle.className = 'org-outline-fold-toggle' + (hasChildren ? '' : ' no-children');
         foldToggle.textContent = hasChildren ? (orgCollapsedOutlines.has(item.charPos) ? '▶' : '▼') : '';
@@ -2461,6 +2465,58 @@ document.getElementById('org-tab-outline2').addEventListener('click', () => {
     if (!orgOutline2Active)
         orgShowOutlineMirrorUI();
 });
+/** 左のアウトライン一覧の項目を右クリックした際に表示する、「セクション内容」「ファイル一覧」切り替え用モーダル。 */
+function orgShowSectionFileDropChoiceModal() {
+    const overlay = document.createElement('div');
+    overlay.className = 'text-bulk-overlay';
+    const box = document.createElement('div');
+    box.className = 'text-bulk-box org-modal-box';
+    const p = document.createElement('p');
+    p.className = 'org-modal-message';
+    p.textContent = '表示を切り替えます:';
+    const btnRow = document.createElement('div');
+    btnRow.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;';
+    const sectionBtn = document.createElement('button');
+    sectionBtn.textContent = 'セクション内容';
+    sectionBtn.style.cssText = 'padding:5px 16px;font-size:0.82rem;font-weight:600;border-radius:6px;cursor:pointer;';
+    const fileDropBtn = document.createElement('button');
+    fileDropBtn.textContent = 'ファイル一覧';
+    fileDropBtn.style.cssText = 'padding:5px 16px;font-size:0.82rem;font-weight:600;border-radius:6px;cursor:pointer;';
+    let resolved = false;
+    const finish = () => {
+        if (resolved)
+            return;
+        resolved = true;
+        document.removeEventListener('keydown', onKey, true);
+        if (document.body.contains(overlay))
+            document.body.removeChild(overlay);
+    };
+    const onKey = (e) => {
+        e.stopImmediatePropagation();
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            finish();
+        }
+    };
+    sectionBtn.addEventListener('click', () => {
+        finish();
+        orgDeactivateFileDropMode();
+    });
+    fileDropBtn.addEventListener('click', () => {
+        finish();
+        void orgOpenFileDropView();
+    });
+    document.addEventListener('keydown', onKey, true);
+    btnRow.appendChild(sectionBtn);
+    btnRow.appendChild(fileDropBtn);
+    box.appendChild(p);
+    box.appendChild(btnRow);
+    overlay.appendChild(box);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay)
+        finish(); });
+    document.body.appendChild(overlay);
+    setTimeout(() => sectionBtn.focus({ preventScroll: true }), 50);
+}
 // ファイル一覧内の「ファイルが無い場所」へのドロップ（コンテナ要素は再利用されるため、リスナーは一度だけ登録する）
 (() => {
     const container = document.getElementById('org-form2');
